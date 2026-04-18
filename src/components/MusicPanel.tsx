@@ -64,7 +64,7 @@ export function MusicPanel() {
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 mb-1">
         <span className="w-2 h-2 rounded-full bg-green-500" />
-        <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-100">Hudba</h2>
+        <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-100">Přidat hudbu do pozadí</h2>
       </div>
 
       {music ? (

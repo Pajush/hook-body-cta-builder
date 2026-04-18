@@ -12,9 +12,10 @@ export type ClipType = 'hook' | 'body' | 'cta'
 
 export interface CombinationResult {
   id: string
-  hook: ClipItem
-  body: ClipItem
-  cta: ClipItem
+  clips: ClipItem[]
+  hook?: ClipItem
+  body?: ClipItem
+  cta?: ClipItem
   filename: string
   status: 'idle' | 'rendering' | 'done' | 'error'
   progress: number // 0..1

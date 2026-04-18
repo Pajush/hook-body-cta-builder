@@ -135,28 +135,41 @@ export class WasmEngine implements IEngine {
         // Get concat duration for fade-out timing
         const probe = await this._probeName(concatOutput)
         const duration = probe.duration
+        const hasOriginalAudio = probe.hasAudio
 
-        const filterParts = [
-          `volume=${Math.max(0, mixAudioOptions.musicVolume).toFixed(2)}`,
-        ]
+        const musicFilterParts = [`volume=${Math.max(0, mixAudioOptions.musicVolume).toFixed(2)}`]
         if (mixAudioOptions.fadeOut) {
-          filterParts.push(
+          musicFilterParts.push(
             `afade=t=out:st=${Math.max(0, duration - mixAudioOptions.fadeOutDuration)}:d=${mixAudioOptions.fadeOutDuration}`
           )
         }
-        const audioFilter = filterParts.join(',')
+        const musicFilter = musicFilterParts.join(',')
 
-        await this.ffmpeg.exec([
-          '-i', concatOutput,
-          '-stream_loop', '-1', '-i', musicName,
-          '-map', '0:v:0',
-          '-map', '1:a:0',
-          '-vcodec', 'copy',
-          '-acodec', 'aac',
-          '-af', audioFilter,
-          '-shortest',
-          mixedOutput,
-        ])
+        if (!mixAudioOptions.replaceOriginalAudio && hasOriginalAudio) {
+          await this.ffmpeg.exec([
+            '-i', concatOutput,
+            '-stream_loop', '-1', '-i', musicName,
+            '-filter_complex', `[1:a]${musicFilter}[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=2[aout]`,
+            '-map', '0:v:0',
+            '-map', '[aout]',
+            '-c:v', 'copy',
+            '-c:a', 'aac',
+            '-shortest',
+            mixedOutput,
+          ])
+        } else {
+          await this.ffmpeg.exec([
+            '-i', concatOutput,
+            '-stream_loop', '-1', '-i', musicName,
+            '-map', '0:v:0',
+            '-map', '1:a:0',
+            '-vcodec', 'copy',
+            '-acodec', 'aac',
+            '-af', musicFilter,
+            '-shortest',
+            mixedOutput,
+          ])
+        }
 
         await this._safeDelete(concatOutput)
         await this._safeDelete(musicName)
@@ -179,13 +192,13 @@ export class WasmEngine implements IEngine {
     }
   }
 
-  private async _probeName(name: string): Promise<{ duration: number }> {
+  private async _probeName(name: string): Promise<{ duration: number; hasAudio: boolean }> {
     let output = ''
     const logger = ({ message }: { message: string }) => { output += message + '\n' }
     this.ffmpeg.on('log', logger)
     try { await this.ffmpeg.exec(['-i', name, '-f', 'null', '-']) } catch { /* expected */ }
     this.ffmpeg.off('log', logger)
-    return { duration: this._parseDuration(output) }
+    return { duration: this._parseDuration(output), hasAudio: /Audio:\s/.test(output) }
   }
 
   private async _safeDelete(path: string): Promise<void> {

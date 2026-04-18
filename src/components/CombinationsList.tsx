@@ -55,7 +55,7 @@ export function CombinationsList({ onPreview }: Props) {
     try {
       await ensureEngine()
       const data = await getEngine().buildCombination({
-        clips: [combo.hook.file, combo.body.file, combo.cta.file],
+        clips: combo.clips.map((clip) => clip.file),
         music: music ?? null,
         normalizeOptions: normalizeSettings,
         mixAudioOptions: audioSettings,
@@ -118,7 +118,7 @@ export function CombinationsList({ onPreview }: Props) {
                 {combo.filename}
               </p>
               <p className="text-xs text-zinc-400">
-                {combo.hook.name} + {combo.body.name} + {combo.cta.name}
+                {[combo.hook?.name, combo.body?.name, combo.cta?.name].filter(Boolean).join(' + ')}
               </p>
               {combo.status === 'rendering' && (
                 <div className="mt-1 h-1 bg-zinc-100 dark:bg-zinc-700 rounded-full overflow-hidden">

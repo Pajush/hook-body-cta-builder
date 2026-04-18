@@ -16,7 +16,9 @@ export default function App() {
   const ctas = useProjectStore((s) => s.ctas)
   const hasCombinations = useProjectStore((s) => s.combinations.length > 0)
 
-  const canGenerate = hooks.length > 0 && bodies.length > 0 && ctas.length > 0
+  const nonEmptyBuckets = [hooks.length, bodies.length, ctas.length].filter((count) => count > 0)
+  const canGenerate = nonEmptyBuckets.length >= 2
+  const expectedCombinations = canGenerate ? nonEmptyBuckets.reduce((acc, count) => acc * count, 1) : 0
 
   function handleGenerateCombinations() {
     generateCombinations()
@@ -67,11 +69,11 @@ export default function App() {
             disabled={!canGenerate}
             className="px-8 py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-base rounded-xl transition-colors shadow-md"
           >
-            ✨ Vygenerovat kombinace{canGenerate ? ` (${hooks.length * bodies.length * ctas.length})` : ''}
+            ✨ Vygenerovat kombinace{canGenerate ? ` (${expectedCombinations})` : ''}
           </button>
           {!canGenerate && (
             <p className="text-sm text-zinc-400">
-              Přidej alespoň 1 hook, 1 body a 1 CTA klip.
+              Přidej klipy alespoň do 2 sekcí (např. Hook + Body).
             </p>
           )}
         </div>
