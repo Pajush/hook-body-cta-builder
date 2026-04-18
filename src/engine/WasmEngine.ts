@@ -3,7 +3,8 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import type { IEngine, MixAudioOptions, NormalizeOptions, ProgressCallback, ProbeResult } from './EngineInterface'
 import { tr } from '../i18n/dictionary'
 
-const CORE_URL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm'
+const CORE_MT_URL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm'
+const CORE_ST_URL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm'
 
 export class WasmEngine implements IEngine {
   private ffmpeg: FFmpeg
@@ -18,10 +19,21 @@ export class WasmEngine implements IEngine {
 
   async load(): Promise<void> {
     if (this.loaded) return
-    const coreURL = await toBlobURL(`${CORE_URL}/ffmpeg-core.js`, 'text/javascript')
-    const wasmURL = await toBlobURL(`${CORE_URL}/ffmpeg-core.wasm`, 'application/wasm')
-    const workerURL = await toBlobURL(`${CORE_URL}/ffmpeg-core.worker.js`, 'text/javascript')
-    await this.ffmpeg.load({ coreURL, wasmURL, workerURL })
+
+    const canUseMultithread =
+      typeof globalThis.SharedArrayBuffer !== 'undefined' && globalThis.crossOriginIsolated === true
+    const baseUrl = canUseMultithread ? CORE_MT_URL : CORE_ST_URL
+
+    const coreURL = await toBlobURL(`${baseUrl}/ffmpeg-core.js`, 'text/javascript')
+    const wasmURL = await toBlobURL(`${baseUrl}/ffmpeg-core.wasm`, 'application/wasm')
+
+    if (canUseMultithread) {
+      const workerURL = await toBlobURL(`${baseUrl}/ffmpeg-core.worker.js`, 'text/javascript')
+      await this.ffmpeg.load({ coreURL, wasmURL, workerURL })
+    } else {
+      await this.ffmpeg.load({ coreURL, wasmURL })
+    }
+
     this.loaded = true
   }
 
