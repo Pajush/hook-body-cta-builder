@@ -10,6 +10,7 @@ export interface NormalizeOptions {
   height: number
   fps: number
   autoRotate: boolean
+  autoRotateDirection: 'cw' | 'ccw'
 }
 
 export interface MixAudioOptions {

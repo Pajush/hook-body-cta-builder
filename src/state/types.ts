@@ -29,6 +29,7 @@ export interface NormalizeSettings {
   height: number
   fps: number // 0 = auto from source clips
   autoRotate: boolean
+  autoRotateDirection: 'cw' | 'ccw'
 }
 
 export interface AudioSettings {

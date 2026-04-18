@@ -95,6 +95,35 @@ export function SettingsPanel() {
         </span>
       </label>
 
+      {norm.autoRotate && (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1">
+            <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Směr auto-rotate</label>
+            <span className="relative inline-flex group">
+              <button
+                type="button"
+                aria-label="Nápověda ke směru rotace"
+                className="w-4 h-4 rounded-full border border-zinc-300 dark:border-zinc-600 text-[10px] leading-none text-zinc-500 dark:text-zinc-300 flex items-center justify-center"
+              >
+                ?
+              </button>
+              <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 w-56 -translate-x-1/2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1 text-[11px] leading-snug text-zinc-600 dark:text-zinc-300 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                Vpravo = otočení o 90° po směru hodin. Vlevo = otočení o 90° proti směru hodin.
+              </span>
+            </span>
+          </div>
+          <select
+            value={norm.autoRotateDirection}
+            onChange={(e) => setNorm({ autoRotateDirection: e.target.value as 'cw' | 'ccw' })}
+            className="border border-zinc-200 dark:border-zinc-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-violet-500"
+          >
+            <option value="cw">Vpravo (90°)</option>
+            <option value="ccw">Vlevo (90°)</option>
+          </select>
+          <p className="text-xs text-zinc-400">Použije se jen při orientačním nesouladu mezi klipem a cílovým formátem.</p>
+        </div>
+      )}
+
     </div>
   )
 }

@@ -66,6 +66,7 @@ export class WasmEngine implements IEngine {
       normalizeOptions.height,
       normalizeOptions.fps,
       normalizeOptions.autoRotate ? 'ar1' : 'ar0',
+      normalizeOptions.autoRotateDirection,
     ].join('|')
   }
 
@@ -168,7 +169,9 @@ export class WasmEngine implements IEngine {
             onStage?.(`Auto-rotate klipu ${i + 1}/${clips.length}`)
           }
 
-          const rotatePrefix = shouldRotate ? 'transpose=1,' : ''
+          const rotatePrefix = shouldRotate
+            ? `transpose=${normalizeOptions.autoRotateDirection === 'ccw' ? '2' : '1'},`
+            : ''
           const normalizeArgs = [
             '-y',
             '-i', inputName,
