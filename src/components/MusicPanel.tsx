@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useProjectStore } from '../state/projectStore'
+import { tr } from '../i18n/dictionary'
 
 export function MusicPanel() {
+  const language = useProjectStore((s) => s.language)
   const music = useProjectStore((s) => s.music)
   const setMusic = useProjectStore((s) => s.setMusic)
   const audio = useProjectStore((s) => s.audioSettings)
@@ -64,7 +66,7 @@ export function MusicPanel() {
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 mb-1">
         <span className="w-2 h-2 rounded-full bg-green-500" />
-        <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-100">Přidat hudbu do pozadí</h2>
+        <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-100">{tr(language, 'musicTitle')}</h2>
       </div>
 
       {music ? (
@@ -77,7 +79,7 @@ export function MusicPanel() {
           <button
             onClick={removeMusic}
             className="text-zinc-400 hover:text-red-500 transition-colors"
-            aria-label="Odebrat hudbu"
+            aria-label={tr(language, 'removeMusic')}
           >
             ✕
           </button>
@@ -89,19 +91,19 @@ export function MusicPanel() {
           onDragOver={(e) => e.preventDefault()}
           className="border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl p-4 text-center text-sm text-zinc-400 hover:border-green-400 hover:text-green-500 cursor-pointer transition-colors"
         >
-          Přetáhni nebo klikni pro výběr hudby (MP3, AAC, WAV)
+          {tr(language, 'musicDropzone')}
         </div>
       )}
 
       <div className="flex items-center gap-2">
-        <label className="text-sm text-zinc-700 dark:text-zinc-300 min-w-24">Hlasitost hudby</label>
+        <label className="text-sm text-zinc-700 dark:text-zinc-300 min-w-24">{tr(language, 'musicVolume')}</label>
         <button
           type="button"
           onClick={togglePlayback}
           disabled={!previewUrl}
           className="shrink-0 rounded-lg border border-zinc-200 dark:border-zinc-700 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
         >
-          {isPlaying ? 'Pause' : 'Play'}
+          {isPlaying ? tr(language, 'pause') : tr(language, 'play')}
         </button>
         <input
           type="range"
@@ -134,7 +136,7 @@ export function MusicPanel() {
             onChange={(e) => setAudio({ replaceOriginalAudio: e.target.checked })}
             className="accent-violet-500"
           />
-          Nahradit originální audio hudební stopou
+          {tr(language, 'replaceOriginalAudio')}
         </label>
 
         <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
@@ -144,7 +146,7 @@ export function MusicPanel() {
             onChange={(e) => setAudio({ fadeOut: e.target.checked })}
             className="accent-violet-500"
           />
-          Fade-out hudby na konci
+          {tr(language, 'fadeOutMusic')}
         </label>
 
         {audio.fadeOut && (

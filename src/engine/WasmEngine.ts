@@ -1,6 +1,7 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import type { IEngine, MixAudioOptions, NormalizeOptions, ProgressCallback, ProbeResult } from './EngineInterface'
+import { tr } from '../i18n/dictionary'
 
 const CORE_URL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm'
 
@@ -127,6 +128,7 @@ export class WasmEngine implements IEngine {
     onStage?: (message: string) => void
   }): Promise<Uint8Array> {
     await this.load()
+    const language = normalizeOptions.language
 
     const totalSteps = clips.length + (music ? 2 : 1) // normalize each + concat + optional mix
     let step = 0
@@ -140,14 +142,14 @@ export class WasmEngine implements IEngine {
     this.ffmpeg.on('log', logger)
 
     try {
-      onStage?.('Cistim predchozi docasne soubory')
+      onStage?.(tr(language, 'stageCleanTemp'))
       await this._cleanupTempFiles()
 
       // 1. Write and normalize each clip
       const normalizedNames: string[] = []
       const normalizedAudioNames: string[] = []
       for (let i = 0; i < clips.length; i++) {
-        onStage?.(`Pripravuji klip ${i + 1}/${clips.length}`)
+        onStage?.(tr(language, 'stagePrepareClip', { current: i + 1, total: clips.length }))
         const clip = clips[i]
         const ext = clip.name.split('.').pop() ?? 'mp4'
         const inputName = `clip_${i}.${ext}`
@@ -155,7 +157,7 @@ export class WasmEngine implements IEngine {
         const { width, height, fps } = normalizeOptions
 
         if (!(await this._fileExists(outputName))) {
-          onStage?.(`Normalizuji video ${i + 1}/${clips.length}`)
+          onStage?.(tr(language, 'stageNormalizeVideo', { current: i + 1, total: clips.length }))
           await this.ffmpeg.writeFile(inputName, await fetchFile(clip))
           const sourceProbe = await this._probeName(inputName)
           const sourceOrientation = this._orientationFromDimensions(sourceProbe.width, sourceProbe.height)
@@ -166,7 +168,7 @@ export class WasmEngine implements IEngine {
             && sourceOrientation !== targetOrientation
 
           if (shouldRotate) {
-            onStage?.(`Auto-rotate klipu ${i + 1}/${clips.length}`)
+            onStage?.(tr(language, 'stageAutoRotateClip', { current: i + 1, total: clips.length }))
           }
 
           const rotatePrefix = shouldRotate
@@ -187,14 +189,14 @@ export class WasmEngine implements IEngine {
           await this.ffmpeg.exec(normalizeArgs)
           await this._safeDelete(inputName)
         } else {
-          onStage?.(`Pouzivam cache videa ${i + 1}/${clips.length}`)
+          onStage?.(tr(language, 'stageUseCachedVideo', { current: i + 1, total: clips.length }))
         }
 
         // Preserve original audio as a separate normalized stream to avoid hangs in combined AV transcode.
         if (!mixAudioOptions.replaceOriginalAudio) {
           const audioOutputName = this._getOrCreateCachedAudioName(this._getAudioCacheKey(clip))
           if (!(await this._fileExists(audioOutputName))) {
-            onStage?.(`Normalizuji puvodni audio ${i + 1}/${clips.length}`)
+            onStage?.(tr(language, 'stageNormalizeOriginalAudio', { current: i + 1, total: clips.length }))
             if (!(await this._fileExists(inputName))) {
               await this.ffmpeg.writeFile(inputName, await fetchFile(clip))
             }
@@ -215,7 +217,7 @@ export class WasmEngine implements IEngine {
             }
             await this._safeDelete(inputName)
           } else {
-            onStage?.(`Pouzivam cache puvodniho audia ${i + 1}/${clips.length}`)
+            onStage?.(tr(language, 'stageUseCachedOriginalAudio', { current: i + 1, total: clips.length }))
           }
 
           if (await this._fileExists(audioOutputName)) {
@@ -228,7 +230,7 @@ export class WasmEngine implements IEngine {
       }
 
       // 2. Concat
-      onStage?.('Spojuji klipy')
+      onStage?.(tr(language, 'stageConcatClips'))
       const concatListContent = normalizedNames.map((n) => `file '${n}'`).join('\n')
       await this.ffmpeg.writeFile('concat_list.txt', this.textEncoder.encode(concatListContent))
       const concatOutput = 'concat_out.mp4'
@@ -247,7 +249,7 @@ export class WasmEngine implements IEngine {
 
       // 2b. Concat original audio (if requested and present)
       if (!mixAudioOptions.replaceOriginalAudio && normalizedAudioNames.length > 0) {
-        onStage?.('Spojuji puvodni audio stopy')
+        onStage?.(tr(language, 'stageConcatOriginalAudio'))
         const audioConcatList = normalizedAudioNames.map((n) => `file '${n}'`).join('\n')
         await this.ffmpeg.writeFile('concat_audio_list.txt', this.textEncoder.encode(audioConcatList))
         preservedAudioOutput = 'concat_original_audio.m4a'
@@ -264,7 +266,7 @@ export class WasmEngine implements IEngine {
 
       // 2c. If keeping original audio and no music, mux video + original audio and finish.
       if (!music && preservedAudioOutput) {
-        onStage?.('Pridavam puvodni audio (voiceover)')
+        onStage?.(tr(language, 'stageAddOriginalAudio'))
         const muxedOutput = 'muxed_with_original_audio.mp4'
         await this.ffmpeg.exec([
           '-y',
@@ -284,7 +286,9 @@ export class WasmEngine implements IEngine {
 
       // 3. Mix audio
       if (music) {
-        onStage?.(mixAudioOptions.replaceOriginalAudio ? 'Pridavam hudbu (nahrazeni puvodniho audia)' : 'Micham voiceover a hudbu')
+        onStage?.(mixAudioOptions.replaceOriginalAudio
+          ? tr(language, 'stageAddMusicReplace')
+          : tr(language, 'stageMixVoiceoverMusic'))
         const musicExt = music.name.split('.').pop() ?? 'mp3'
         const musicName = `music.${musicExt}`
         await this.ffmpeg.writeFile(musicName, await fetchFile(music))
@@ -341,21 +345,21 @@ export class WasmEngine implements IEngine {
       }
 
       if (!music) {
-        onStage?.('Dokoncuji export bez hudby')
+        onStage?.(tr(language, 'stageFinalizeNoMusic'))
       }
 
       try {
-        onStage?.('Nacitam vystupni soubor')
+        onStage?.(tr(language, 'stageLoadOutput'))
         const data = await this.ffmpeg.readFile(finalOutput)
         await this._safeDelete(finalOutput)
-        onStage?.('Hotovo')
+        onStage?.(tr(language, 'stageDone'))
         return data as Uint8Array
       } catch {
-        throw new Error(`Nepodarilo se nacist vystupni soubor ${finalOutput} z ffmpeg FS. ${this._tailLogs(logs)}`)
+        throw new Error(tr(language, 'errReadOutput', { file: finalOutput, tail: this._tailLogs(language, logs) }))
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
-      throw new Error(`${msg}. ${this._tailLogs(logs)}`)
+      throw new Error(`${msg}. ${this._tailLogs(language, logs)}`)
     } finally {
       this.ffmpeg.off('log', logger)
     }
@@ -384,9 +388,9 @@ export class WasmEngine implements IEngine {
     }
   }
 
-  private _tailLogs(logs: string[]): string {
-    if (logs.length === 0) return 'FFmpeg nevratil zadny log.'
-    return `Posledni ffmpeg logy: ${logs.slice(-6).join(' | ')}`
+  private _tailLogs(language: NormalizeOptions['language'], logs: string[]): string {
+    if (logs.length === 0) return tr(language, 'ffmpegNoLogs')
+    return tr(language, 'ffmpegLastLogs', { logs: logs.slice(-6).join(' | ') })
   }
 
   private async _cleanupTempFiles(): Promise<void> {

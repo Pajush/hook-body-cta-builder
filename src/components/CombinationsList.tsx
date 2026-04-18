@@ -1,6 +1,7 @@
 import { useProjectStore } from '../state/projectStore'
 import { getEngine } from '../lib/engineSingleton'
 import { downloadAsZip, downloadSingle } from '../lib/zip'
+import { tr } from '../i18n/dictionary'
 import type { CombinationResult } from '../state/types'
 
 interface Props {
@@ -38,6 +39,7 @@ async function validateClipOrientation(
   targetWidth: number,
   targetHeight: number,
   autoRotate: boolean,
+  language: 'cs' | 'en',
 ): Promise<string | null> {
   const targetOrientation = getOrientation(targetWidth, targetHeight)
   if (autoRotate) return null
@@ -55,8 +57,10 @@ async function validateClipOrientation(
 
     if (!width || !height) continue
     if (getOrientation(width, height) !== targetOrientation) {
-      const requiredLabel = targetOrientation === 'landscape' ? 'horizontální' : 'vertikální'
-      return `Klip "${clip.name}" má jinou orientaci než zvolený výstup. Pro ${requiredLabel} výstup použij klipy se stejnou orientací.`
+      const requiredLabel = targetOrientation === 'landscape'
+        ? tr(language, 'outputHorizontal')
+        : tr(language, 'outputVertical')
+      return tr(language, 'orientationError', { name: clip.name, required: requiredLabel })
     }
   }
 
@@ -68,12 +72,12 @@ function resolveAutoFpsCandidate(fps: number): number {
   return Math.max(12, Math.min(120, Math.round(fps)))
 }
 
-function statusLabel(status: CombinationResult['status']): string {
+function statusLabel(status: CombinationResult['status'], language: 'cs' | 'en'): string {
   switch (status) {
-    case 'idle': return 'Čeká'
-    case 'rendering': return 'Renderuji...'
-    case 'done': return 'Hotovo'
-    case 'error': return 'Chyba'
+    case 'idle': return tr(language, 'statusIdle')
+    case 'rendering': return tr(language, 'statusRendering')
+    case 'done': return tr(language, 'statusDone')
+    case 'error': return tr(language, 'statusError')
   }
 }
 
@@ -88,6 +92,7 @@ function statusColor(status: CombinationResult['status']): string {
 
 export function CombinationsList({ onPreview }: Props) {
   const combinations = useProjectStore((s) => s.combinations)
+  const language = useProjectStore((s) => s.language)
   const updateCombination = useProjectStore((s) => s.updateCombination)
   const music = useProjectStore((s) => s.music)
   const normalizeSettings = useProjectStore((s) => s.normalizeSettings)
@@ -112,6 +117,7 @@ export function CombinationsList({ onPreview }: Props) {
       normalizeSettings.width,
       normalizeSettings.height,
       normalizeSettings.autoRotate,
+      language,
     )
     if (orientationError) {
       updateCombination(combo.id, {
@@ -119,7 +125,7 @@ export function CombinationsList({ onPreview }: Props) {
         progress: 0,
         outputBlob: undefined,
         errorMessage: orientationError,
-        debugMessage: 'Nevalidni orientace klipu pro cilovy format',
+        debugMessage: tr(language, 'orientationInvalidDebug'),
       })
       return
     }
@@ -129,13 +135,13 @@ export function CombinationsList({ onPreview }: Props) {
       progress: 0,
       outputBlob: undefined,
       errorMessage: undefined,
-      debugMessage: 'Pripravuji render...',
+      debugMessage: tr(language, 'preparingRender'),
     })
     try {
       await ensureEngine()
       let effectiveFps = normalizeSettings.fps
       if (normalizeSettings.fps === 0) {
-        updateCombination(combo.id, { debugMessage: 'Zjisťuji FPS ze vstupních klipů...' })
+        updateCombination(combo.id, { debugMessage: tr(language, 'detectFps') })
         const probeFpsValues: number[] = []
         for (const clip of combo.clips) {
           try {
@@ -151,7 +157,7 @@ export function CombinationsList({ onPreview }: Props) {
           ? probeFpsValues.reduce((sum, value) => sum + value, 0) / probeFpsValues.length
           : 30
         effectiveFps = resolveAutoFpsCandidate(average)
-        updateCombination(combo.id, { debugMessage: `Auto FPS: ${effectiveFps}` })
+        updateCombination(combo.id, { debugMessage: tr(language, 'autoFpsSelected', { fps: effectiveFps }) })
       }
 
       const data = await getEngine().buildCombination({
@@ -160,6 +166,7 @@ export function CombinationsList({ onPreview }: Props) {
         normalizeOptions: {
           ...normalizeSettings,
           fps: effectiveFps,
+          language,
         },
         mixAudioOptions: audioSettings,
         onProgress: (p) => updateCombination(combo.id, { progress: p }),
@@ -171,13 +178,13 @@ export function CombinationsList({ onPreview }: Props) {
         status: 'done',
         progress: 1,
         outputBlob: blob,
-        debugMessage: 'Render dokonceny',
+        debugMessage: tr(language, 'renderCompleted'),
       })
     } catch (e) {
       updateCombination(combo.id, {
         status: 'error',
         errorMessage: e instanceof Error ? e.message : String(e),
-        debugMessage: 'Render selhal',
+        debugMessage: tr(language, 'renderFailed'),
       })
     }
   }
@@ -198,7 +205,7 @@ export function CombinationsList({ onPreview }: Props) {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-100">
-          Kombinace ({combinations.length})
+          {tr(language, 'combinationsTitle')} ({combinations.length})
         </h2>
         <div className="flex gap-2">
           <button
@@ -206,14 +213,14 @@ export function CombinationsList({ onPreview }: Props) {
             disabled={engineLoading}
             className="px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors font-medium"
           >
-            {engineLoading ? 'Načítám engine...' : 'Renderovat vše'}
+            {engineLoading ? tr(language, 'loadingEngine') : tr(language, 'renderAll')}
           </button>
         </div>
       </div>
 
       {engineLoading && (
         <p className="text-sm text-violet-500 animate-pulse">
-          Načítám ffmpeg.wasm — první spuštění trvá chvíli (~30 MB)...
+          {tr(language, 'ffmpegLoading')}
         </p>
       )}
 
@@ -247,7 +254,7 @@ export function CombinationsList({ onPreview }: Props) {
             </div>
 
             <span className={`text-xs font-medium shrink-0 ${statusColor(combo.status)}`}>
-              {statusLabel(combo.status)}
+              {statusLabel(combo.status, language)}
             </span>
 
             <div className="flex gap-1 shrink-0">
@@ -256,7 +263,7 @@ export function CombinationsList({ onPreview }: Props) {
                 disabled={combo.status === 'rendering' || engineLoading}
                 className="px-3 py-1.5 text-xs bg-zinc-100 dark:bg-zinc-700 hover:bg-violet-100 dark:hover:bg-zinc-600 disabled:opacity-40 rounded-lg transition-colors"
               >
-                ▶ Render
+                {tr(language, 'renderButton')}
               </button>
 
               {combo.status === 'done' && (
@@ -265,13 +272,13 @@ export function CombinationsList({ onPreview }: Props) {
                     onClick={() => onPreview(combo)}
                     className="px-3 py-1.5 text-xs bg-zinc-100 dark:bg-zinc-700 hover:bg-blue-100 dark:hover:bg-zinc-600 rounded-lg transition-colors"
                   >
-                    👁 Náhled
+                    {tr(language, 'previewButton')}
                   </button>
                   <button
                     onClick={() => downloadSingle(combo)}
                     className="px-3 py-1.5 text-xs bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-800/40 text-green-700 dark:text-green-400 rounded-lg transition-colors font-medium"
                   >
-                    ↓ Stáhnout
+                    {tr(language, 'downloadButton')}
                   </button>
                 </>
               )}
@@ -286,7 +293,7 @@ export function CombinationsList({ onPreview }: Props) {
             onClick={() => downloadAsZip(combinations)}
             className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors font-medium"
           >
-            ↓ Stáhnout vše jako ZIP ({doneCount})
+            {tr(language, 'downloadAllZip', { count: doneCount })}
           </button>
         </div>
       )}

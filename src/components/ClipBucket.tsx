@@ -16,6 +16,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import type { ClipItem, ClipType } from '../state/types'
 import { useProjectStore } from '../state/projectStore'
+import { tr } from '../i18n/dictionary'
 
 interface ClipRowProps {
   clip: ClipItem
@@ -26,6 +27,7 @@ function ClipRow({ clip, type }: ClipRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: clip.id })
   const removeClip = useProjectStore((s) => s.removeClip)
   const updateClipName = useProjectStore((s) => s.updateClipName)
+  const language = useProjectStore((s) => s.language)
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -42,7 +44,7 @@ function ClipRow({ clip, type }: ClipRowProps) {
         {...attributes}
         {...listeners}
         className="text-zinc-400 cursor-grab active:cursor-grabbing px-1 select-none"
-        aria-label="Přetáhnout"
+        aria-label={tr(language, 'drag')}
       >
         ⠿
       </button>
@@ -60,7 +62,7 @@ function ClipRow({ clip, type }: ClipRowProps) {
         value={clip.name}
         onChange={(e) => updateClipName(type, clip.id, e.target.value)}
         className="flex-1 min-w-0 text-sm border border-zinc-200 dark:border-zinc-600 rounded px-2 py-1 bg-transparent focus:outline-none focus:ring-1 focus:ring-violet-500"
-        aria-label="Název klipu"
+        aria-label={tr(language, 'clipName')}
       />
 
       {clip.duration !== undefined && (
@@ -70,7 +72,7 @@ function ClipRow({ clip, type }: ClipRowProps) {
       <button
         onClick={() => removeClip(type, clip.id)}
         className="text-zinc-400 hover:text-red-500 shrink-0 transition-colors"
-        aria-label="Odstranit"
+        aria-label={tr(language, 'remove')}
       >
         ✕
       </button>
@@ -108,6 +110,7 @@ export function ClipBucket({ type, label, color }: ClipBucketProps) {
   )
   const addClip = useProjectStore((s) => s.addClip)
   const reorderClips = useProjectStore((s) => s.reorderClips)
+  const language = useProjectStore((s) => s.language)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const sensors = useSensors(useSensor(PointerSensor))
@@ -167,7 +170,7 @@ export function ClipBucket({ type, label, color }: ClipBucketProps) {
       <div className={`flex items-center gap-2 mb-1`}>
         <span className={`w-2 h-2 rounded-full ${color}`} />
         <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-100">{label}</h2>
-        <span className="ml-auto text-xs text-zinc-400">{clips.length} klipy</span>
+        <span className="ml-auto text-xs text-zinc-400">{tr(language, 'clipsCount', { count: clips.length })}</span>
       </div>
 
       <div
@@ -176,7 +179,7 @@ export function ClipBucket({ type, label, color }: ClipBucketProps) {
         onClick={() => fileInputRef.current?.click()}
         className="border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl p-4 text-center text-sm text-zinc-400 hover:border-violet-400 hover:text-violet-500 cursor-pointer transition-colors"
       >
-        Přetáhni nebo klikni pro přidání videí
+        {tr(language, 'clipDropzone')}
       </div>
 
       <input

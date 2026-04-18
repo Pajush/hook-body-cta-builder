@@ -1,31 +1,21 @@
 import { useProjectStore } from '../state/projectStore'
+import { FPS_PRESETS, RESOLUTION_PRESETS, tr } from '../i18n/dictionary'
 
-const RESOLUTIONS = [
-  { label: '1080×1920 (vertikál, TikTok/Reels)', width: 1080, height: 1920 },
-  { label: '1920×1080 (horizontál, YouTube)', width: 1920, height: 1080 },
-  { label: '1080×1080 (čtverec)', width: 1080, height: 1080 },
-]
-
-const FPS_OPTIONS = [
-  { value: 0, label: 'Auto (podle vstupních videí)' },
-  { value: 24, label: '24 fps (filmový vzhled)' },
-  { value: 25, label: '25 fps (PAL / EU)' },
-  { value: 30, label: '30 fps (běžný web/social)' },
-  { value: 60, label: '60 fps (plynulejší pohyb)' },
-]
-
-function fpsDescription(fps: number): string {
-  if (fps === 0) return 'Auto použije FPS z přiložených klipů (zaokrouhlené na celé FPS). Když se nedá spolehlivě zjistit, použije se 30 fps.'
-  if (fps === 60) return '60 fps NEzrychlí video 2x. Zachová stejnou délku, jen přidá plynulost. U zdrojů s 30 fps se dopočítají mezisnímky/duplikáty.'
-  if (fps === 30) return '30 fps je bezpečný default pro většinu sociálních sítí a webu.'
-  return `${fps} fps změní snímkování výstupu, ne délku videa.`
+function fpsDescription(fps: number, isCs: boolean): string {
+  const language = isCs ? 'cs' : 'en'
+  if (fps === 0) return tr(language, 'fpsDescAuto')
+  if (fps === 60) return tr(language, 'fpsDesc60')
+  if (fps === 30) return tr(language, 'fpsDesc30')
+  return tr(language, 'fpsDescGeneric', { fps })
 }
 
 export function SettingsPanel() {
+  const language = useProjectStore((s) => s.language)
   const projectName = useProjectStore((s) => s.projectName)
   const setProjectName = useProjectStore((s) => s.setProjectName)
   const norm = useProjectStore((s) => s.normalizeSettings)
   const setNorm = useProjectStore((s) => s.setNormalizeSettings)
+  const isCs = language === 'cs'
 
   const currentResKey = `${norm.width}x${norm.height}`
 
@@ -33,11 +23,11 @@ export function SettingsPanel() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2 mb-1">
         <span className="w-2 h-2 rounded-full bg-amber-500" />
-        <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-100">Nastavení</h2>
+        <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-100">{tr(language, 'settingsTitle')}</h2>
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Název projektu</label>
+        <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{tr(language, 'projectName')}</label>
         <input
           type="text"
           value={projectName}
@@ -45,11 +35,11 @@ export function SettingsPanel() {
           className="border border-zinc-200 dark:border-zinc-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-violet-500"
           placeholder="video"
         />
-        <p className="text-xs text-zinc-400">Výsledné soubory: {projectName || 'video'}-hook1-body1-cta1.mp4</p>
+        <p className="text-xs text-zinc-400">{tr(language, 'outputFiles')}: {projectName || 'video'}-hook1-body1-cta1.mp4</p>
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Výstupní rozlišení</label>
+        <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{tr(language, 'outputResolution')}</label>
         <select
           value={currentResKey}
           onChange={(e) => {
@@ -58,7 +48,7 @@ export function SettingsPanel() {
           }}
           className="border border-zinc-200 dark:border-zinc-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-violet-500"
         >
-          {RESOLUTIONS.map((r) => (
+          {RESOLUTION_PRESETS[isCs ? 'cs' : 'en'].map((r) => (
             <option key={`${r.width}x${r.height}`} value={`${r.width}x${r.height}`}>
               {r.label}
             </option>
@@ -67,17 +57,17 @@ export function SettingsPanel() {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">FPS výstupu</label>
+        <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{tr(language, 'outputFps')}</label>
         <select
           value={norm.fps}
           onChange={(e) => setNorm({ fps: parseInt(e.target.value, 10) })}
           className="border border-zinc-200 dark:border-zinc-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-violet-500"
         >
-          {FPS_OPTIONS.map((f) => (
+          {FPS_PRESETS[isCs ? 'cs' : 'en'].map((f) => (
             <option key={f.value} value={f.value}>{f.label}</option>
           ))}
         </select>
-        <p className="text-xs text-zinc-400">{fpsDescription(norm.fps)}</p>
+        <p className="text-xs text-zinc-400">{fpsDescription(norm.fps, isCs)}</p>
       </div>
 
       <label className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-300">
@@ -88,9 +78,9 @@ export function SettingsPanel() {
           className="mt-0.5"
         />
         <span>
-          Auto-rotate při nesouladu orientace
+          {tr(language, 'autoRotateMismatch')}
           <span className="block text-xs text-zinc-400">
-            Když je výstup horizontální a klip vertikální (nebo naopak), klip se zkusí otočit o 90° místo chyby.
+            {tr(language, 'autoRotateHelp')}
           </span>
         </span>
       </label>
@@ -98,17 +88,17 @@ export function SettingsPanel() {
       {norm.autoRotate && (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1">
-            <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Směr auto-rotate</label>
+            <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{tr(language, 'autoRotateDirection')}</label>
             <span className="relative inline-flex group">
               <button
                 type="button"
-                aria-label="Nápověda ke směru rotace"
+                aria-label={tr(language, 'rotationDirectionHelpLabel')}
                 className="w-4 h-4 rounded-full border border-zinc-300 dark:border-zinc-600 text-[10px] leading-none text-zinc-500 dark:text-zinc-300 flex items-center justify-center"
               >
                 ?
               </button>
               <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 w-56 -translate-x-1/2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1 text-[11px] leading-snug text-zinc-600 dark:text-zinc-300 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                Vpravo = otočení o 90° po směru hodin. Vlevo = otočení o 90° proti směru hodin.
+                {tr(language, 'rotationDirectionHelp')}
               </span>
             </span>
           </div>
@@ -117,10 +107,10 @@ export function SettingsPanel() {
             onChange={(e) => setNorm({ autoRotateDirection: e.target.value as 'cw' | 'ccw' })}
             className="border border-zinc-200 dark:border-zinc-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-violet-500"
           >
-            <option value="cw">Vpravo (90°)</option>
-            <option value="ccw">Vlevo (90°)</option>
+            <option value="cw">{tr(language, 'rotateRight')}</option>
+            <option value="ccw">{tr(language, 'rotateLeft')}</option>
           </select>
-          <p className="text-xs text-zinc-400">Použije se jen při orientačním nesouladu mezi klipem a cílovým formátem.</p>
+          <p className="text-xs text-zinc-400">{tr(language, 'autoRotateDirectionNote')}</p>
         </div>
       )}
 

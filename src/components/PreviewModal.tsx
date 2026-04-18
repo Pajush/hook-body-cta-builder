@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { CombinationResult } from '../state/types'
+import { useProjectStore } from '../state/projectStore'
+import { tr } from '../i18n/dictionary'
 
 interface Props {
   combo: CombinationResult | null
@@ -7,6 +9,7 @@ interface Props {
 }
 
 export function PreviewModal({ combo, onClose }: Props) {
+  const language = useProjectStore((s) => s.language)
   const videoRef = useRef<HTMLVideoElement>(null)
   const blobUrl = useRef<string | null>(null)
 
@@ -33,7 +36,7 @@ export function PreviewModal({ combo, onClose }: Props) {
           <button
             onClick={onClose}
             className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-lg leading-none ml-3"
-            aria-label="Zavřít"
+            aria-label={tr(language, 'close')}
           >
             ✕
           </button>

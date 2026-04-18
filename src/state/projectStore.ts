@@ -1,8 +1,23 @@
 import { create } from 'zustand'
-import type { ClipItem, ProjectStore } from './types'
+import type { ClipItem, Language, ProjectStore } from './types'
 import { generateCombinations as computeCombinations } from '../lib/combinations'
 
+const LANGUAGE_STORAGE_KEY = 'hook-body-cta-builder-language'
+
+function getInitialLanguage(): Language {
+  if (typeof window === 'undefined') return 'en'
+  const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
+  if (stored === 'cs' || stored === 'en') return stored
+  return 'en'
+}
+
+function persistLanguage(language: Language) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
+}
+
 export const useProjectStore = create<ProjectStore>((set, get) => ({
+  language: getInitialLanguage(),
   projectName: 'video',
   hooks: [],
   bodies: [],
@@ -15,6 +30,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   engineLoading: false,
 
   setProjectName: (name) => set({ projectName: name }),
+  setLanguage: (language) => {
+    persistLanguage(language)
+    set({ language })
+  },
 
   addClip: (type, clip) => {
     const key = type === 'hook' ? 'hooks' : type === 'body' ? 'bodies' : 'ctas'

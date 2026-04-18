@@ -11,6 +11,7 @@ export interface NormalizeOptions {
   fps: number
   autoRotate: boolean
   autoRotateDirection: 'cw' | 'ccw'
+  language: 'cs' | 'en'
 }
 
 export interface MixAudioOptions {

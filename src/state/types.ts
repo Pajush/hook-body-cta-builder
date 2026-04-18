@@ -9,6 +9,7 @@ export interface ClipItem {
 }
 
 export type ClipType = 'hook' | 'body' | 'cta'
+export type Language = 'cs' | 'en'
 
 export interface CombinationResult {
   id: string
@@ -40,6 +41,7 @@ export interface AudioSettings {
 }
 
 export interface ProjectStore {
+  language: Language
   projectName: string
   hooks: ClipItem[]
   bodies: ClipItem[]
@@ -52,6 +54,7 @@ export interface ProjectStore {
   engineLoading: boolean
 
   setProjectName(name: string): void
+  setLanguage(language: Language): void
   addClip(type: ClipType, clip: ClipItem): void
   removeClip(type: ClipType, id: string): void
   updateClipName(type: ClipType, id: string, name: string): void
