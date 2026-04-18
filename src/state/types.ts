@@ -27,7 +27,8 @@ export interface CombinationResult {
 export interface NormalizeSettings {
   width: number
   height: number
-  fps: number
+  fps: number // 0 = auto from source clips
+  autoRotate: boolean
 }
 
 export interface AudioSettings {

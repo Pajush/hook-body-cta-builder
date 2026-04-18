@@ -9,6 +9,7 @@ export interface NormalizeOptions {
   width: number
   height: number
   fps: number
+  autoRotate: boolean
 }
 
 export interface MixAudioOptions {

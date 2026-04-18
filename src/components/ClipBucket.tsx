@@ -130,16 +130,30 @@ export function ClipBucket({ type, label, color }: ClipBucketProps) {
       const thumbnailUrl = URL.createObjectURL(file)
       const id = `${type}_${Date.now()}_${Math.random().toString(36).slice(2)}`
 
-      // Quick duration probe via HTML5 video element
-      const duration = await new Promise<number>((resolve) => {
+      // Quick metadata probe via HTML5 video element
+      const metadata = await new Promise<{ duration: number; width: number; height: number }>((resolve) => {
         const v = document.createElement('video')
         v.preload = 'metadata'
         v.src = thumbnailUrl
-        v.onloadedmetadata = () => resolve(v.duration)
-        v.onerror = () => resolve(0)
+        v.onloadedmetadata = () => {
+          resolve({
+            duration: Number.isFinite(v.duration) ? v.duration : 0,
+            width: v.videoWidth || 0,
+            height: v.videoHeight || 0,
+          })
+        }
+        v.onerror = () => resolve({ duration: 0, width: 0, height: 0 })
       })
 
-      addClip(type, { id, file, name: defaultName, duration, thumbnailUrl })
+      addClip(type, {
+        id,
+        file,
+        name: defaultName,
+        duration: metadata.duration,
+        width: metadata.width,
+        height: metadata.height,
+        thumbnailUrl,
+      })
     }
   }
 

@@ -65,6 +65,7 @@ export class WasmEngine implements IEngine {
       normalizeOptions.width,
       normalizeOptions.height,
       normalizeOptions.fps,
+      normalizeOptions.autoRotate ? 'ar1' : 'ar0',
     ].join('|')
   }
 
@@ -102,6 +103,11 @@ export class WasmEngine implements IEngine {
     } catch {
       return false
     }
+  }
+
+  private _orientationFromDimensions(width: number, height: number): 'landscape' | 'portrait' | 'square' {
+    if (width === height) return 'square'
+    return width > height ? 'landscape' : 'portrait'
   }
 
   async buildCombination({
@@ -150,12 +156,25 @@ export class WasmEngine implements IEngine {
         if (!(await this._fileExists(outputName))) {
           onStage?.(`Normalizuji video ${i + 1}/${clips.length}`)
           await this.ffmpeg.writeFile(inputName, await fetchFile(clip))
+          const sourceProbe = await this._probeName(inputName)
+          const sourceOrientation = this._orientationFromDimensions(sourceProbe.width, sourceProbe.height)
+          const targetOrientation = this._orientationFromDimensions(width, height)
+          const shouldRotate = normalizeOptions.autoRotate
+            && targetOrientation !== 'square'
+            && sourceOrientation !== 'square'
+            && sourceOrientation !== targetOrientation
+
+          if (shouldRotate) {
+            onStage?.(`Auto-rotate klipu ${i + 1}/${clips.length}`)
+          }
+
+          const rotatePrefix = shouldRotate ? 'transpose=1,' : ''
           const normalizeArgs = [
             '-y',
             '-i', inputName,
             '-map', '0:v:0',
             // Fill target frame and crop from center instead of letterboxing.
-            '-vf', `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},fps=${fps},setsar=1`,
+            '-vf', `${rotatePrefix}scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},fps=${fps},setsar=1`,
             '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
             '-an',
             '-pix_fmt', 'yuv420p',
@@ -339,13 +358,19 @@ export class WasmEngine implements IEngine {
     }
   }
 
-  private async _probeName(name: string): Promise<{ duration: number; hasAudio: boolean }> {
+  private async _probeName(name: string): Promise<{ duration: number; hasAudio: boolean; width: number; height: number }> {
     let output = ''
     const logger = ({ message }: { message: string }) => { output += message + '\n' }
     this.ffmpeg.on('log', logger)
     try { await this.ffmpeg.exec(['-i', name, '-f', 'null', '-']) } catch { /* expected */ }
     this.ffmpeg.off('log', logger)
-    return { duration: this._parseDuration(output), hasAudio: /Audio:\s/.test(output) }
+    const videoMatch = output.match(/(\d{2,5})x(\d{2,5})/)
+    return {
+      duration: this._parseDuration(output),
+      hasAudio: /Audio:\s/.test(output),
+      width: parseInt(videoMatch?.[1] ?? '0', 10),
+      height: parseInt(videoMatch?.[2] ?? '0', 10),
+    }
   }
 
   private async _safeDelete(path: string): Promise<void> {
