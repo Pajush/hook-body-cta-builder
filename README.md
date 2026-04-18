@@ -1,6 +1,6 @@
 # Hook Body CTA Builder
 
-Public app: http://hook-body-cta-builder.vercel.app/
+Public app: https://hook-body-cta-builder.vercel.app/
 
 Made by Pavla Duranova:
 https://www.linkedin.com/in/pavla-duranova/

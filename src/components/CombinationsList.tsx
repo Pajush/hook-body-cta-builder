@@ -105,8 +105,18 @@ export function CombinationsList({ onPreview }: Props) {
   async function ensureEngine() {
     if (!engineLoaded) {
       setEngineLoading(true)
-      await getEngine().load()
-      setEngineLoaded(true)
+      try {
+        // Add a timeout to prevent infinite hang
+        const loadPromise = getEngine().load()
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('FFmpeg initialization timeout (>60s)')), 60000)
+        )
+        await Promise.race([loadPromise, timeoutPromise])
+        setEngineLoaded(true)
+      } catch (error) {
+        setEngineLoading(false)
+        throw error
+      }
       setEngineLoading(false)
     }
   }
@@ -181,10 +191,27 @@ export function CombinationsList({ onPreview }: Props) {
         debugMessage: tr(language, 'renderCompleted'),
       })
     } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : String(e)
+      console.error('[CombinationsList] Render error:', errorMsg)
+      
+      let userErrorMsg = errorMsg
+      let debugMsg = tr(language, 'renderFailed')
+      
+      if (errorMsg.includes('timeout')) {
+        userErrorMsg = tr(language, 'ffmpegTimeout')
+        debugMsg = tr(language, 'ffmpegTimeout')
+      } else if (errorMsg.includes('network') || errorMsg.includes('Failed to fetch')) {
+        userErrorMsg = tr(language, 'ffmpegNetworkError')
+        debugMsg = tr(language, 'ffmpegNetworkError')
+      } else if (errorMsg.includes('SharedArrayBuffer') || errorMsg.includes('initialization')) {
+        userErrorMsg = tr(language, 'ffmpegInitError')
+        debugMsg = tr(language, 'ffmpegInitError')
+      }
+      
       updateCombination(combo.id, {
         status: 'error',
-        errorMessage: e instanceof Error ? e.message : String(e),
-        debugMessage: tr(language, 'renderFailed'),
+        errorMessage: userErrorMsg,
+        debugMessage: debugMsg,
       })
     }
   }

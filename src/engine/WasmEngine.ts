@@ -20,21 +20,32 @@ export class WasmEngine implements IEngine {
   async load(): Promise<void> {
     if (this.loaded) return
 
-    const canUseMultithread =
-      typeof globalThis.SharedArrayBuffer !== 'undefined' && globalThis.crossOriginIsolated === true
-    const baseUrl = canUseMultithread ? CORE_MT_URL : CORE_ST_URL
+    try {
+      const canUseMultithread =
+        typeof globalThis.SharedArrayBuffer !== 'undefined' && globalThis.crossOriginIsolated === true
+      const baseUrl = canUseMultithread ? CORE_MT_URL : CORE_ST_URL
 
-    const coreURL = await toBlobURL(`${baseUrl}/ffmpeg-core.js`, 'text/javascript')
-    const wasmURL = await toBlobURL(`${baseUrl}/ffmpeg-core.wasm`, 'application/wasm')
+      console.log('[WasmEngine] Loading FFmpeg from:', baseUrl)
+      console.log('[WasmEngine] Multithread support:', canUseMultithread)
 
-    if (canUseMultithread) {
-      const workerURL = await toBlobURL(`${baseUrl}/ffmpeg-core.worker.js`, 'text/javascript')
-      await this.ffmpeg.load({ coreURL, wasmURL, workerURL })
-    } else {
-      await this.ffmpeg.load({ coreURL, wasmURL })
+      const coreURL = await toBlobURL(`${baseUrl}/ffmpeg-core.js`, 'text/javascript')
+      const wasmURL = await toBlobURL(`${baseUrl}/ffmpeg-core.wasm`, 'application/wasm')
+
+      console.log('[WasmEngine] Blob URLs created, loading FFmpeg...')
+
+      if (canUseMultithread) {
+        const workerURL = await toBlobURL(`${baseUrl}/ffmpeg-core.worker.js`, 'text/javascript')
+        await this.ffmpeg.load({ coreURL, wasmURL, workerURL })
+      } else {
+        await this.ffmpeg.load({ coreURL, wasmURL })
+      }
+
+      console.log('[WasmEngine] FFmpeg loaded successfully')
+      this.loaded = true
+    } catch (error) {
+      console.error('[WasmEngine] Failed to load FFmpeg:', error)
+      throw new Error(`FFmpeg initialization failed: ${error instanceof Error ? error.message : String(error)}`)
     }
-
-    this.loaded = true
   }
 
   async probe(file: File): Promise<ProbeResult> {
