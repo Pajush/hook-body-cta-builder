@@ -9,7 +9,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   ctas: [],
   music: null,
   normalizeSettings: { width: 1080, height: 1920, fps: 30 },
-  audioSettings: { fadeOut: true, fadeOutDuration: 1, replaceOriginalAudio: true, musicVolume: 0.8 },
+  audioSettings: { fadeOut: true, fadeOutDuration: 1, replaceOriginalAudio: false, musicVolume: 0.8 },
   combinations: [],
   engineLoaded: false,
   engineLoading: false,

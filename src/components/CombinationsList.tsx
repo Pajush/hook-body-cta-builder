@@ -46,7 +46,12 @@ export function CombinationsList({ onPreview }: Props) {
   }
 
   async function renderCombo(combo: CombinationResult) {
-    updateCombination(combo.id, { status: 'rendering', progress: 0 })
+    updateCombination(combo.id, {
+      status: 'rendering',
+      progress: 0,
+      outputBlob: undefined,
+      errorMessage: undefined,
+    })
     try {
       await ensureEngine()
       const data = await getEngine().buildCombination({

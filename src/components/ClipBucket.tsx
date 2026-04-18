@@ -84,6 +84,24 @@ interface ClipBucketProps {
   color: string
 }
 
+function getBaseFileName(fileName: string): string {
+  const dotIndex = fileName.lastIndexOf('.')
+  return dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName
+}
+
+function getUniqueClipName(existingNames: string[], rawName: string): string {
+  const normalized = rawName.trim() || 'clip'
+  if (!existingNames.includes(normalized)) return normalized
+
+  let suffix = 2
+  let candidate = `${normalized}-${suffix}`
+  while (existingNames.includes(candidate)) {
+    suffix += 1
+    candidate = `${normalized}-${suffix}`
+  }
+  return candidate
+}
+
 export function ClipBucket({ type, label, color }: ClipBucketProps) {
   const clips = useProjectStore((s) =>
     type === 'hook' ? s.hooks : type === 'body' ? s.bodies : s.ctas
@@ -105,9 +123,10 @@ export function ClipBucket({ type, label, color }: ClipBucketProps) {
 
   async function handleFiles(files: FileList | null) {
     if (!files) return
+    const nextNames = clips.map((clip) => clip.name)
     for (const file of Array.from(files)) {
-      const index = clips.length + Array.from(files).indexOf(file) + 1
-      const defaultName = `${type}${index}`
+      const defaultName = getUniqueClipName(nextNames, getBaseFileName(file.name))
+      nextNames.push(defaultName)
       const thumbnailUrl = URL.createObjectURL(file)
       const id = `${type}_${Date.now()}_${Math.random().toString(36).slice(2)}`
 
