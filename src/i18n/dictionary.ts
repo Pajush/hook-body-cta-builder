@@ -115,6 +115,9 @@ const MESSAGES = {
     errReadOutput: 'Nepodařilo se načíst výstupní soubor {file} z ffmpeg FS. {tail}',
     ffmpegNoLogs: 'FFmpeg nevrátil žádný log.',
     ffmpegLastLogs: 'Poslední ffmpeg logy: {logs}',
+    ffmpegInitError: 'Inicializace FFmpeg selhala. Zkus: 1) Osvěži stránku, 2) Vyprázdni cache prohlížeče, 3) Zkontroluj síť.',
+    ffmpegTimeout: 'FFmpeg se neinicializoval v čase. Síť je příliš pomalá nebo server s FFmpeg není dostupný.',
+    ffmpegNetworkError: 'Chyba sítě při stažení FFmpeg. Zkontroluj připojení na internet a zkus znovu.',
   },
   en: {
     appTitle: 'Video Combinator',
@@ -200,6 +203,9 @@ const MESSAGES = {
     errReadOutput: 'Failed to read output file {file} from ffmpeg FS. {tail}',
     ffmpegNoLogs: 'FFmpeg returned no logs.',
     ffmpegLastLogs: 'Last ffmpeg logs: {logs}',
+    ffmpegInitError: 'FFmpeg initialization failed. Try: 1) Refresh the page, 2) Clear browser cache, 3) Check your internet connection.',
+    ffmpegTimeout: 'FFmpeg initialization timeout. Your internet connection is too slow or the FFmpeg server is unavailable.',
+    ffmpegNetworkError: 'Network error downloading FFmpeg. Check your internet connection and try again.',
   },
 } as const
 
