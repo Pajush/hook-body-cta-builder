@@ -118,6 +118,7 @@ const MESSAGES = {
     ffmpegInitError: 'Inicializace FFmpeg selhala. Zkus: 1) Osvěži stránku, 2) Vyprázdni cache prohlížeče, 3) Zkontroluj síť.',
     ffmpegTimeout: 'FFmpeg se neinicializoval v čase. Síť je příliš pomalá nebo server s FFmpeg není dostupný.',
     ffmpegNetworkError: 'Chyba sítě při stažení FFmpeg. Zkontroluj připojení na internet a zkus znovu.',
+    ffmpegSlowNetwork: 'Stahování FFmpeg z internetu trvá déle... Zkontroluj své připojení. Zkus na stabilnější wifi nebo vyčkej.'
   },
   en: {
     appTitle: 'Video Combinator',
@@ -206,6 +207,7 @@ const MESSAGES = {
     ffmpegInitError: 'FFmpeg initialization failed. Try: 1) Refresh the page, 2) Clear browser cache, 3) Check your internet connection.',
     ffmpegTimeout: 'FFmpeg initialization timeout. Your internet connection is too slow or the FFmpeg server is unavailable.',
     ffmpegNetworkError: 'Network error downloading FFmpeg. Check your internet connection and try again.',
+    ffmpegSlowNetwork: 'Downloading FFmpeg from the internet is taking a while... Check your connection. Try a more stable Wi-Fi or wait.',
   },
 } as const
 
