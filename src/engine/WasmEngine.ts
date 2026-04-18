@@ -80,7 +80,7 @@ export class WasmEngine implements IEngine {
       const localUrl = canUseMultithread ? LOCAL_URLS.multithread : LOCAL_URLS.singlethread
       console.log('[WasmEngine] Attempting to load from local bundle:', localUrl)
       
-      if (await this._tryLoadFromUrl(localUrl, canUseMultithread, 0)) {
+      if (await this._tryLoadFromUrl(localUrl, canUseMultithread, 30000)) {
         this.loaded = true
         return
       }
@@ -88,7 +88,7 @@ export class WasmEngine implements IEngine {
       // Fall back to CDNs
       console.log('[WasmEngine] Local bundle not available, falling back to CDNs...')
       const cdnUrls = canUseMultithread ? CDN_URLS.multithread : CDN_URLS.singlethread
-      const timeoutPerCdn = 30000
+      const timeoutPerCdn = 20000
       for (const baseUrl of cdnUrls) {
         const success = await this._tryLoadFromUrl(baseUrl, canUseMultithread, timeoutPerCdn)
         if (success) {

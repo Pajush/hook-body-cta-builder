@@ -109,7 +109,7 @@ export function CombinationsList({ onPreview }: Props) {
         // Add a timeout to prevent infinite hang while allowing slower first-time initialization.
         const loadPromise = getEngine().load()
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('FFmpeg initialization timeout (>180s)')), 180000)
+          setTimeout(() => reject(new Error('FFmpeg initialization timeout (>300s)')), 300000)
         )
         await Promise.race([loadPromise, timeoutPromise])
         setEngineLoaded(true)
