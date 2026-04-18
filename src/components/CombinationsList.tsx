@@ -106,10 +106,10 @@ export function CombinationsList({ onPreview }: Props) {
     if (!engineLoaded) {
       setEngineLoading(true)
       try {
-        // Add a timeout to prevent infinite hang
+        // Add a timeout to prevent infinite hang (120 seconds for 2 CDN attempts × 30s each)
         const loadPromise = getEngine().load()
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('FFmpeg initialization timeout (>60s)')), 60000)
+          setTimeout(() => reject(new Error('FFmpeg initialization timeout (>120s)')), 120000)
         )
         await Promise.race([loadPromise, timeoutPromise])
         setEngineLoaded(true)
@@ -246,9 +246,14 @@ export function CombinationsList({ onPreview }: Props) {
       </div>
 
       {engineLoading && (
-        <p className="text-sm text-violet-500 animate-pulse">
-          {tr(language, 'ffmpegLoading')}
-        </p>
+        <div className="flex flex-col gap-2 text-sm">
+          <p className="text-violet-500 animate-pulse">
+            {tr(language, 'ffmpegLoading')}
+          </p>
+          <p className="text-xs text-zinc-500">
+            {tr(language, 'ffmpegSlowNetwork')}
+          </p>
+        </div>
       )}
 
       <div className="flex flex-col gap-2">

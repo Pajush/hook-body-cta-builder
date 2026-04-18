@@ -3,8 +3,23 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import type { IEngine, MixAudioOptions, NormalizeOptions, ProgressCallback, ProbeResult } from './EngineInterface'
 import { tr } from '../i18n/dictionary'
 
-const CORE_MT_URL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm'
-const CORE_ST_URL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm'
+// Local paths (bundled with the app)
+const LOCAL_URLS = {
+  multithread: '/ffmpeg-mt',
+  singlethread: '/ffmpeg-st',
+}
+
+// Fallback CDN URLs if local files are not available
+const CDN_URLS = {
+  multithread: [
+    'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm',
+    'https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm',
+  ],
+  singlethread: [
+    'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm',
+    'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm',
+  ],
+}
 
 export class WasmEngine implements IEngine {
   private ffmpeg: FFmpeg
@@ -17,31 +32,70 @@ export class WasmEngine implements IEngine {
     this.ffmpeg = new FFmpeg()
   }
 
+  private async _tryLoadFromUrl(baseUrl: string, canUseMultithread: boolean, timeoutMs: number): Promise<boolean> {
+    try {
+      console.log('[WasmEngine] Trying:', baseUrl)
+      
+      const fetchWithTimeout = (url: string, type: string) => {
+        return Promise.race([
+          toBlobURL(url, type),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout fetching ${url}`)), timeoutMs)
+          ),
+        ])
+      }
+
+      const coreURL = await fetchWithTimeout(`${baseUrl}/ffmpeg-core.js`, 'text/javascript')
+      const wasmURL = await fetchWithTimeout(`${baseUrl}/ffmpeg-core.wasm`, 'application/wasm')
+
+      console.log('[WasmEngine] Blob URLs created, loading FFmpeg...')
+
+      if (canUseMultithread) {
+        const workerURL = await fetchWithTimeout(`${baseUrl}/ffmpeg-core.worker.js`, 'text/javascript')
+        await this.ffmpeg.load({ coreURL, wasmURL, workerURL })
+      } else {
+        await this.ffmpeg.load({ coreURL, wasmURL })
+      }
+
+      console.log('[WasmEngine] FFmpeg loaded successfully from:', baseUrl)
+      return true
+    } catch (error) {
+      console.warn('[WasmEngine] Failed to load from', baseUrl, ':', error)
+      return false
+    }
+  }
+
   async load(): Promise<void> {
     if (this.loaded) return
 
     try {
       const canUseMultithread =
         typeof globalThis.SharedArrayBuffer !== 'undefined' && globalThis.crossOriginIsolated === true
-      const baseUrl = canUseMultithread ? CORE_MT_URL : CORE_ST_URL
-
-      console.log('[WasmEngine] Loading FFmpeg from:', baseUrl)
       console.log('[WasmEngine] Multithread support:', canUseMultithread)
 
-      const coreURL = await toBlobURL(`${baseUrl}/ffmpeg-core.js`, 'text/javascript')
-      const wasmURL = await toBlobURL(`${baseUrl}/ffmpeg-core.wasm`, 'application/wasm')
-
-      console.log('[WasmEngine] Blob URLs created, loading FFmpeg...')
-
-      if (canUseMultithread) {
-        const workerURL = await toBlobURL(`${baseUrl}/ffmpeg-core.worker.js`, 'text/javascript')
-        await this.ffmpeg.load({ coreURL, wasmURL, workerURL })
-      } else {
-        await this.ffmpeg.load({ coreURL, wasmURL })
+      // Try local first (bundled with the app)
+      const localUrl = canUseMultithread ? LOCAL_URLS.multithread : LOCAL_URLS.singlethread
+      console.log('[WasmEngine] Attempting to load from local bundle:', localUrl)
+      
+      if (await this._tryLoadFromUrl(localUrl, canUseMultithread, 15000)) {
+        this.loaded = true
+        return
       }
 
-      console.log('[WasmEngine] FFmpeg loaded successfully')
-      this.loaded = true
+      // Fall back to CDNs
+      console.log('[WasmEngine] Local bundle not available, falling back to CDNs...')
+      const cdnUrls = canUseMultithread ? CDN_URLS.multithread : CDN_URLS.singlethread
+      const timeoutPerCdn = 30000
+      for (const baseUrl of cdnUrls) {
+        const success = await this._tryLoadFromUrl(baseUrl, canUseMultithread, timeoutPerCdn)
+        if (success) {
+          this.loaded = true
+          return
+        }
+      }
+
+      // All attempts failed
+      throw new Error(`All FFmpeg sources failed. Tried: local bundle, ${cdnUrls.join(', ')}`)
     } catch (error) {
       console.error('[WasmEngine] Failed to load FFmpeg:', error)
       throw new Error(`FFmpeg initialization failed: ${error instanceof Error ? error.message : String(error)}`)
