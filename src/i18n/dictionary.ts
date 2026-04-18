@@ -115,10 +115,10 @@ const MESSAGES = {
     errReadOutput: 'Nepodařilo se načíst výstupní soubor {file} z ffmpeg FS. {tail}',
     ffmpegNoLogs: 'FFmpeg nevrátil žádný log.',
     ffmpegLastLogs: 'Poslední ffmpeg logy: {logs}',
-    ffmpegInitError: 'Inicializace FFmpeg selhala. Zkus: 1) Osvěži stránku, 2) Vyprázdni cache prohlížeče, 3) Zkontroluj síť.',
-    ffmpegTimeout: 'FFmpeg se neinicializoval v čase. Síť je příliš pomalá nebo server s FFmpeg není dostupný.',
-    ffmpegNetworkError: 'Chyba sítě při stažení FFmpeg. Zkontroluj připojení na internet a zkus znovu.',
-    ffmpegSlowNetwork: 'Stahování FFmpeg z internetu trvá déle... Zkontroluj své připojení. Zkus na stabilnější wifi nebo vyčkej.'
+    ffmpegInitError: 'Inicializace FFmpeg selhala. Zkus: 1) Obnovit stránku, 2) Vyprázdnit cache prohlížeče.',
+    ffmpegTimeout: 'Inicializace FFmpeg trvala příliš dlouho. Zkus stránku obnovit a render spustit znovu.',
+    ffmpegNetworkError: 'Nepodařilo se načíst FFmpeg soubory. Zkus stránku obnovit a render spustit znovu.',
+    ffmpegSlowNetwork: 'Inicializace FFmpeg trvá déle... Prosím chvíli vyčkej.'
   },
   en: {
     appTitle: 'Video Combinator',
@@ -204,10 +204,10 @@ const MESSAGES = {
     errReadOutput: 'Failed to read output file {file} from ffmpeg FS. {tail}',
     ffmpegNoLogs: 'FFmpeg returned no logs.',
     ffmpegLastLogs: 'Last ffmpeg logs: {logs}',
-    ffmpegInitError: 'FFmpeg initialization failed. Try: 1) Refresh the page, 2) Clear browser cache, 3) Check your internet connection.',
-    ffmpegTimeout: 'FFmpeg initialization timeout. Your internet connection is too slow or the FFmpeg server is unavailable.',
-    ffmpegNetworkError: 'Network error downloading FFmpeg. Check your internet connection and try again.',
-    ffmpegSlowNetwork: 'Downloading FFmpeg from the internet is taking a while... Check your connection. Try a more stable Wi-Fi or wait.',
+    ffmpegInitError: 'FFmpeg initialization failed. Try: 1) Refresh the page, 2) Clear browser cache.',
+    ffmpegTimeout: 'FFmpeg initialization took too long. Refresh the page and try rendering again.',
+    ffmpegNetworkError: 'Unable to load FFmpeg files. Refresh the page and try rendering again.',
+    ffmpegSlowNetwork: 'FFmpeg initialization is taking longer... Please wait a moment.',
   },
 } as const
 
