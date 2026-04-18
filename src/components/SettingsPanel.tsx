@@ -11,8 +11,6 @@ export function SettingsPanel() {
   const setProjectName = useProjectStore((s) => s.setProjectName)
   const norm = useProjectStore((s) => s.normalizeSettings)
   const setNorm = useProjectStore((s) => s.setNormalizeSettings)
-  const audio = useProjectStore((s) => s.audioSettings)
-  const setAudio = useProjectStore((s) => s.setAudioSettings)
 
   const currentResKey = `${norm.width}x${norm.height}`
 
@@ -66,44 +64,6 @@ export function SettingsPanel() {
         </select>
       </div>
 
-      <div className="flex flex-col gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-700">
-        <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Audio</label>
-
-        <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={audio.replaceOriginalAudio}
-            onChange={(e) => setAudio({ replaceOriginalAudio: e.target.checked })}
-            className="accent-violet-500"
-          />
-          Nahradit originální audio hudební stopou
-        </label>
-
-        <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={audio.fadeOut}
-            onChange={(e) => setAudio({ fadeOut: e.target.checked })}
-            className="accent-violet-500"
-          />
-          Fade-out hudby na konci
-        </label>
-
-        {audio.fadeOut && (
-          <div className="flex items-center gap-2 pl-5">
-            <input
-              type="range"
-              min={0.5}
-              max={3}
-              step={0.5}
-              value={audio.fadeOutDuration}
-              onChange={(e) => setAudio({ fadeOutDuration: parseFloat(e.target.value) })}
-              className="flex-1 accent-violet-500"
-            />
-            <span className="text-xs text-zinc-500 w-10">{audio.fadeOutDuration}s</span>
-          </div>
-        )}
-      </div>
     </div>
   )
 }

@@ -15,6 +15,7 @@ export interface MixAudioOptions {
   fadeOut: boolean
   fadeOutDuration: number // seconds
   replaceOriginalAudio: boolean
+  musicVolume: number // 0..2 where 1 is original level
 }
 
 export type ProgressCallback = (progress: number) => void // 0..1

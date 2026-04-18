@@ -4,6 +4,8 @@ import { useProjectStore } from '../state/projectStore'
 export function MusicPanel() {
   const music = useProjectStore((s) => s.music)
   const setMusic = useProjectStore((s) => s.setMusic)
+  const audio = useProjectStore((s) => s.audioSettings)
+  const setAudio = useProjectStore((s) => s.setAudioSettings)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   function handleFile(files: FileList | null) {
@@ -42,6 +44,59 @@ export function MusicPanel() {
           Přetáhni nebo klikni pro výběr hudby (MP3, AAC, WAV)
         </div>
       )}
+
+      <div className="flex items-center gap-2">
+        <label className="text-sm text-zinc-700 dark:text-zinc-300 min-w-24">Hlasitost hudby</label>
+        <input
+          type="range"
+          min={0}
+          max={2}
+          step={0.05}
+          value={audio.musicVolume}
+          onChange={(e) => setAudio({ musicVolume: parseFloat(e.target.value) })}
+          className="flex-1 accent-violet-500"
+        />
+        <span className="text-xs text-zinc-500 w-12 text-right">
+          {Math.round(audio.musicVolume * 100)}%
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-700">
+        <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={audio.replaceOriginalAudio}
+            onChange={(e) => setAudio({ replaceOriginalAudio: e.target.checked })}
+            className="accent-violet-500"
+          />
+          Nahradit originální audio hudební stopou
+        </label>
+
+        <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={audio.fadeOut}
+            onChange={(e) => setAudio({ fadeOut: e.target.checked })}
+            className="accent-violet-500"
+          />
+          Fade-out hudby na konci
+        </label>
+
+        {audio.fadeOut && (
+          <div className="flex items-center gap-2 pl-5">
+            <input
+              type="range"
+              min={0.5}
+              max={3}
+              step={0.5}
+              value={audio.fadeOutDuration}
+              onChange={(e) => setAudio({ fadeOutDuration: parseFloat(e.target.value) })}
+              className="flex-1 accent-violet-500"
+            />
+            <span className="text-xs text-zinc-500 w-10">{audio.fadeOutDuration}s</span>
+          </div>
+        )}
+      </div>
 
       <input
         ref={fileInputRef}

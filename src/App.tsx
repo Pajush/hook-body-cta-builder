@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ClipBucket } from './components/ClipBucket'
 import { MusicPanel } from './components/MusicPanel'
 import { SettingsPanel } from './components/SettingsPanel'
@@ -9,6 +9,7 @@ import type { CombinationResult } from './state/types'
 
 export default function App() {
   const [previewCombo, setPreviewCombo] = useState<CombinationResult | null>(null)
+  const combinationsSectionRef = useRef<HTMLElement | null>(null)
   const generateCombinations = useProjectStore((s) => s.generateCombinations)
   const hooks = useProjectStore((s) => s.hooks)
   const bodies = useProjectStore((s) => s.bodies)
@@ -16,6 +17,15 @@ export default function App() {
   const hasCombinations = useProjectStore((s) => s.combinations.length > 0)
 
   const canGenerate = hooks.length > 0 && bodies.length > 0 && ctas.length > 0
+
+  function handleGenerateCombinations() {
+    generateCombinations()
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        combinationsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    })
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100">
@@ -53,7 +63,7 @@ export default function App() {
 
         <div className="flex flex-col items-center gap-3">
           <button
-            onClick={generateCombinations}
+            onClick={handleGenerateCombinations}
             disabled={!canGenerate}
             className="px-8 py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-base rounded-xl transition-colors shadow-md"
           >
@@ -67,7 +77,7 @@ export default function App() {
         </div>
 
         {hasCombinations && (
-          <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+          <section ref={combinationsSectionRef} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
             <CombinationsList onPreview={setPreviewCombo} />
           </section>
         )}

@@ -32,6 +32,7 @@ export interface AudioSettings {
   fadeOut: boolean
   fadeOutDuration: number
   replaceOriginalAudio: boolean
+  musicVolume: number // 0..2 where 1 is original level
 }
 
 export interface ProjectStore {
