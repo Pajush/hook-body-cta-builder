@@ -1,73 +1,79 @@
-# React + TypeScript + Vite
+# Hook Body CTA Builder
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Public app: http://hook-body-cta-builder.vercel.app/
 
-Currently, two official plugins are available:
+Made by Pavla Duranova:
+https://www.linkedin.com/in/pavla-duranova/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Support / Buy Me a Coffee:
+https://buymeacoffee.com/pajushinkad
 
-## React Compiler
+Feel free to use :)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## CZ
 
-## Expanding the ESLint configuration
+Webová aplikace pro skládání video kombinací ve stylu Hook + Body + CTA.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Co umí
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. Nahrání klipů do sekcí Hook / Body / CTA.
+2. Automatické generování všech kombinací (včetně 2 ze 3 sekcí).
+3. Volitelné přidání hudby, fade-out, zachování nebo nahrazení původního audia.
+4. Nastavení výstupního rozlišení, FPS a auto-rotate při nesouladu orientace.
+5. Náhled, stažení jednotlivých výstupů, nebo hromadně jako ZIP.
+6. Přepínač jazyka Česky / English.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Výkon a limity
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Celé zpracování běží lokálně v prohlížeči přes ffmpeg.wasm.
+2. Nic se neposílá na server kvůli renderu.
+3. Doporučení pro plynulý provoz: přibližně do 20 videí, ideálně každé do 1 minuty.
+4. Orientační nároky na paměť: cca 1.5-5 GB RAM podle délky, rozlišení a počtu renderů.
+5. Při větších dávkách pomůže zavřít další náročné karty/aplikace.
+
+### Lokální spuštění
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Produkční build:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+npm run build
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## EN
+
+Web app for building video combinations in a Hook + Body + CTA workflow.
+
+### Features
+
+1. Upload clips into Hook / Body / CTA sections.
+2. Auto-generate all combinations (including 2 out of 3 sections).
+3. Optional background music, fade-out, keep or replace original audio.
+4. Output settings for resolution, FPS, and auto-rotate on orientation mismatch.
+5. Preview and download individual outputs or all outputs as ZIP.
+6. Language switcher: Czech / English.
+
+### Performance notes
+
+1. Processing runs entirely in your browser using ffmpeg.wasm.
+2. No render uploads are sent to any server.
+3. Recommended for smooth usage: around 20 videos, ideally up to 1 minute each.
+4. Typical memory usage: around 1.5-5 GB RAM depending on duration, resolution, and render count.
+5. For bigger batches, close other heavy browser tabs/apps.
+
+### Local run
+
+```bash
+npm install
+npm run dev
+```
+
+Production build:
+
+```bash
+npm run build
 ```
