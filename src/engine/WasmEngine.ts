@@ -89,6 +89,7 @@ export class WasmEngine implements IEngine {
 
       // 1. Write and normalize each clip
       const normalizedNames: string[] = []
+      const normalizedAudioNames: string[] = []
       for (let i = 0; i < clips.length; i++) {
         onStage?.(`Normalizuji klip ${i + 1}/${clips.length}`)
         const clip = clips[i]
@@ -101,15 +102,37 @@ export class WasmEngine implements IEngine {
         const normalizeArgs = [
           '-y',
           '-i', inputName,
+          '-map', '0:v:0',
           '-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,fps=${fps}`,
           '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
-          ...(mixAudioOptions.replaceOriginalAudio ? ['-an'] : ['-c:a', 'aac']),
+          '-an',
           '-pix_fmt', 'yuv420p',
           '-movflags', '+faststart',
           outputName,
         ]
 
         await this.ffmpeg.exec(normalizeArgs)
+
+        // Preserve original audio as a separate normalized stream to avoid hangs in combined AV transcode.
+        if (!mixAudioOptions.replaceOriginalAudio) {
+          const audioOutputName = `aud_${i}.m4a`
+          try {
+            await this.ffmpeg.exec([
+              '-y',
+              '-i', inputName,
+              '-vn',
+              '-map', '0:a:0',
+              '-c:a', 'aac',
+              '-ar', '48000',
+              '-ac', '2',
+              audioOutputName,
+            ])
+            normalizedAudioNames.push(audioOutputName)
+          } catch {
+            // Clip may not contain an audio track; continue without this audio segment.
+          }
+        }
+
         await this._safeDelete(inputName)
         normalizedNames.push(outputName)
         advance()
@@ -132,6 +155,45 @@ export class WasmEngine implements IEngine {
       advance()
 
       let finalOutput = concatOutput
+      let preservedAudioOutput: string | null = null
+
+      // 2b. Concat original audio (if requested and present)
+      if (!mixAudioOptions.replaceOriginalAudio && normalizedAudioNames.length > 0) {
+        onStage?.('Spojuji puvodni audio stopy')
+        const audioConcatList = normalizedAudioNames.map((n) => `file '${n}'`).join('\n')
+        await this.ffmpeg.writeFile('concat_audio_list.txt', this.textEncoder.encode(audioConcatList))
+        preservedAudioOutput = 'concat_original_audio.m4a'
+        await this.ffmpeg.exec([
+          '-y',
+          '-f', 'concat', '-safe', '0',
+          '-i', 'concat_audio_list.txt',
+          '-c', 'copy',
+          preservedAudioOutput,
+        ])
+
+        for (const n of normalizedAudioNames) await this._safeDelete(n)
+        await this._safeDelete('concat_audio_list.txt')
+      }
+
+      // 2c. If keeping original audio and no music, mux video + original audio and finish.
+      if (!music && preservedAudioOutput) {
+        onStage?.('Pridavam puvodni audio (voiceover)')
+        const muxedOutput = 'muxed_with_original_audio.mp4'
+        await this.ffmpeg.exec([
+          '-y',
+          '-i', concatOutput,
+          '-i', preservedAudioOutput,
+          '-map', '0:v:0',
+          '-map', '1:a:0',
+          '-c:v', 'copy',
+          '-c:a', 'aac',
+          '-shortest',
+          muxedOutput,
+        ])
+        await this._safeDelete(concatOutput)
+        await this._safeDelete(preservedAudioOutput)
+        finalOutput = muxedOutput
+      }
 
       // 3. Mix audio
       if (music) {
@@ -145,7 +207,7 @@ export class WasmEngine implements IEngine {
         // Get concat duration for fade-out timing
         const probe = await this._probeName(concatOutput)
         const duration = probe.duration
-        const hasOriginalAudio = probe.hasAudio
+        const hasOriginalAudio = Boolean(preservedAudioOutput)
 
         const musicFilterParts = [`volume=${Math.max(0, mixAudioOptions.musicVolume).toFixed(2)}`]
         if (mixAudioOptions.fadeOut) {
@@ -155,12 +217,13 @@ export class WasmEngine implements IEngine {
         }
         const musicFilter = musicFilterParts.join(',')
 
-        if (!mixAudioOptions.replaceOriginalAudio && hasOriginalAudio) {
+        if (!mixAudioOptions.replaceOriginalAudio && hasOriginalAudio && preservedAudioOutput) {
           await this.ffmpeg.exec([
             '-y',
             '-i', concatOutput,
+            '-i', preservedAudioOutput,
             '-stream_loop', '-1', '-i', musicName,
-            '-filter_complex', `[1:a]${musicFilter}[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=2[aout]`,
+            '-filter_complex', `[2:a]${musicFilter}[bg];[1:a][bg]amix=inputs=2:duration=first:dropout_transition=2[aout]`,
             '-map', '0:v:0',
             '-map', '[aout]',
             '-c:v', 'copy',
@@ -184,6 +247,7 @@ export class WasmEngine implements IEngine {
         }
 
         await this._safeDelete(concatOutput)
+        if (preservedAudioOutput) await this._safeDelete(preservedAudioOutput)
         await this._safeDelete(musicName)
         finalOutput = mixedOutput
         advance()
@@ -234,8 +298,11 @@ export class WasmEngine implements IEngine {
 
   private async _cleanupTempFiles(): Promise<void> {
     await this._safeDelete('concat_list.txt')
+    await this._safeDelete('concat_audio_list.txt')
     await this._safeDelete('concat_out.mp4')
     await this._safeDelete('mixed_out.mp4')
+    await this._safeDelete('concat_original_audio.m4a')
+    await this._safeDelete('muxed_with_original_audio.mp4')
     await this._safeDelete('music.mp3')
     await this._safeDelete('music.wav')
     await this._safeDelete('music.m4a')
@@ -244,6 +311,7 @@ export class WasmEngine implements IEngine {
     // Best-effort cleanup for known temp naming pattern.
     for (let i = 0; i < 30; i++) {
       await this._safeDelete(`norm_${i}.mp4`)
+      await this._safeDelete(`aud_${i}.m4a`)
       await this._safeDelete(`clip_${i}.mp4`)
       await this._safeDelete(`clip_${i}.mov`)
       await this._safeDelete(`clip_${i}.webm`)
