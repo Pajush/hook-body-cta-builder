@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useProjectStore } from '../state/projectStore'
 
 export function MusicPanel() {
@@ -7,9 +7,57 @@ export function MusicPanel() {
   const audio = useProjectStore((s) => s.audioSettings)
   const setAudio = useProjectStore((s) => s.setAudioSettings)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const audioPreviewRef = useRef<HTMLAudioElement>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+
+  useEffect(() => {
+    if (!music) {
+      setPreviewUrl(null)
+      setIsPlaying(false)
+      return
+    }
+
+    const url = URL.createObjectURL(music)
+    setPreviewUrl(url)
+
+    return () => {
+      URL.revokeObjectURL(url)
+    }
+  }, [music])
+
+  useEffect(() => {
+    if (audioPreviewRef.current) {
+      audioPreviewRef.current.volume = Math.max(0, Math.min(1, audio.musicVolume / 2))
+    }
+  }, [audio.musicVolume])
 
   function handleFile(files: FileList | null) {
     if (files?.[0]) setMusic(files[0])
+  }
+
+  async function togglePlayback() {
+    const element = audioPreviewRef.current
+    if (!element || !previewUrl) return
+
+    if (element.paused) {
+      try {
+        await element.play()
+        setIsPlaying(true)
+      } catch {
+        setIsPlaying(false)
+      }
+      return
+    }
+
+    element.pause()
+    setIsPlaying(false)
+  }
+
+  function removeMusic() {
+    audioPreviewRef.current?.pause()
+    setIsPlaying(false)
+    setMusic(null)
   }
 
   return (
@@ -27,7 +75,7 @@ export function MusicPanel() {
             <p className="text-xs text-zinc-400">{(music.size / 1024 / 1024).toFixed(1)} MB</p>
           </div>
           <button
-            onClick={() => setMusic(null)}
+            onClick={removeMusic}
             className="text-zinc-400 hover:text-red-500 transition-colors"
             aria-label="Odebrat hudbu"
           >
@@ -47,6 +95,14 @@ export function MusicPanel() {
 
       <div className="flex items-center gap-2">
         <label className="text-sm text-zinc-700 dark:text-zinc-300 min-w-24">Hlasitost hudby</label>
+        <button
+          type="button"
+          onClick={togglePlayback}
+          disabled={!previewUrl}
+          className="shrink-0 rounded-lg border border-zinc-200 dark:border-zinc-700 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+        >
+          {isPlaying ? 'Pause' : 'Play'}
+        </button>
         <input
           type="range"
           min={0}
@@ -60,6 +116,15 @@ export function MusicPanel() {
           {Math.round(audio.musicVolume * 100)}%
         </span>
       </div>
+
+      <audio
+        ref={audioPreviewRef}
+        src={previewUrl ?? undefined}
+        onEnded={() => setIsPlaying(false)}
+        onPause={() => setIsPlaying(false)}
+        onPlay={() => setIsPlaying(true)}
+        className="hidden"
+      />
 
       <div className="flex flex-col gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-700">
         <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
