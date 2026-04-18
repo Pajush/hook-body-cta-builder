@@ -21,6 +21,7 @@ export interface CombinationResult {
   progress: number // 0..1
   outputBlob?: Blob
   errorMessage?: string
+  debugMessage?: string
 }
 
 export interface NormalizeSettings {

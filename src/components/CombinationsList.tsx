@@ -51,6 +51,7 @@ export function CombinationsList({ onPreview }: Props) {
       progress: 0,
       outputBlob: undefined,
       errorMessage: undefined,
+      debugMessage: 'Pripravuji render...',
     })
     try {
       await ensureEngine()
@@ -60,14 +61,21 @@ export function CombinationsList({ onPreview }: Props) {
         normalizeOptions: normalizeSettings,
         mixAudioOptions: audioSettings,
         onProgress: (p) => updateCombination(combo.id, { progress: p }),
+        onStage: (message) => updateCombination(combo.id, { debugMessage: message }),
       })
       const arrayBuffer = Uint8Array.from(data).buffer
       const blob = new Blob([arrayBuffer], { type: 'video/mp4' })
-      updateCombination(combo.id, { status: 'done', progress: 1, outputBlob: blob })
+      updateCombination(combo.id, {
+        status: 'done',
+        progress: 1,
+        outputBlob: blob,
+        debugMessage: 'Render dokonceny',
+      })
     } catch (e) {
       updateCombination(combo.id, {
         status: 'error',
         errorMessage: e instanceof Error ? e.message : String(e),
+        debugMessage: 'Render selhal',
       })
     }
   }
@@ -127,6 +135,9 @@ export function CombinationsList({ onPreview }: Props) {
                     style={{ width: `${Math.round(combo.progress * 100)}%` }}
                   />
                 </div>
+              )}
+              {(combo.status === 'rendering' || combo.status === 'error') && combo.debugMessage && (
+                <p className="text-xs text-zinc-500 mt-0.5">{combo.debugMessage}</p>
               )}
               {combo.status === 'error' && (
                 <p className="text-xs text-red-400 mt-0.5">{combo.errorMessage}</p>

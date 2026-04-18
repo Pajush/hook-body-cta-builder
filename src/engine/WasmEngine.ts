@@ -61,12 +61,14 @@ export class WasmEngine implements IEngine {
     normalizeOptions,
     mixAudioOptions,
     onProgress,
+    onStage,
   }: {
     clips: File[]
     music: File | null
     normalizeOptions: NormalizeOptions
     mixAudioOptions: MixAudioOptions
     onProgress?: ProgressCallback
+    onStage?: (message: string) => void
   }): Promise<Uint8Array> {
     await this.load()
 
@@ -82,9 +84,13 @@ export class WasmEngine implements IEngine {
     this.ffmpeg.on('log', logger)
 
     try {
+      onStage?.('Cistim predchozi docasne soubory')
+      await this._cleanupTempFiles()
+
       // 1. Write and normalize each clip
       const normalizedNames: string[] = []
       for (let i = 0; i < clips.length; i++) {
+        onStage?.(`Normalizuji klip ${i + 1}/${clips.length}`)
         const clip = clips[i]
         const ext = clip.name.split('.').pop() ?? 'mp4'
         const inputName = `clip_${i}.${ext}`
@@ -93,6 +99,7 @@ export class WasmEngine implements IEngine {
         const { width, height, fps } = normalizeOptions
 
         const normalizeArgs = [
+          '-y',
           '-i', inputName,
           '-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,fps=${fps}`,
           '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
@@ -109,10 +116,12 @@ export class WasmEngine implements IEngine {
       }
 
       // 2. Concat
+      onStage?.('Spojuji klipy')
       const concatListContent = normalizedNames.map((n) => `file '${n}'`).join('\n')
       await this.ffmpeg.writeFile('concat_list.txt', this.textEncoder.encode(concatListContent))
       const concatOutput = 'concat_out.mp4'
       await this.ffmpeg.exec([
+        '-y',
         '-f', 'concat', '-safe', '0',
         '-i', 'concat_list.txt',
         '-c', 'copy',
@@ -126,6 +135,7 @@ export class WasmEngine implements IEngine {
 
       // 3. Mix audio
       if (music) {
+        onStage?.(mixAudioOptions.replaceOriginalAudio ? 'Pridavam hudbu (nahrazeni puvodniho audia)' : 'Micham voiceover a hudbu')
         const musicExt = music.name.split('.').pop() ?? 'mp3'
         const musicName = `music.${musicExt}`
         await this.ffmpeg.writeFile(musicName, await fetchFile(music))
@@ -147,6 +157,7 @@ export class WasmEngine implements IEngine {
 
         if (!mixAudioOptions.replaceOriginalAudio && hasOriginalAudio) {
           await this.ffmpeg.exec([
+            '-y',
             '-i', concatOutput,
             '-stream_loop', '-1', '-i', musicName,
             '-filter_complex', `[1:a]${musicFilter}[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=2[aout]`,
@@ -159,6 +170,7 @@ export class WasmEngine implements IEngine {
           ])
         } else {
           await this.ffmpeg.exec([
+            '-y',
             '-i', concatOutput,
             '-stream_loop', '-1', '-i', musicName,
             '-map', '0:v:0',
@@ -177,9 +189,15 @@ export class WasmEngine implements IEngine {
         advance()
       }
 
+      if (!music) {
+        onStage?.('Dokoncuji export bez hudby')
+      }
+
       try {
+        onStage?.('Nacitam vystupni soubor')
         const data = await this.ffmpeg.readFile(finalOutput)
         await this._safeDelete(finalOutput)
+        onStage?.('Hotovo')
         return data as Uint8Array
       } catch {
         throw new Error(`Nepodarilo se nacist vystupni soubor ${finalOutput} z ffmpeg FS. ${this._tailLogs(logs)}`)
@@ -212,5 +230,24 @@ export class WasmEngine implements IEngine {
   private _tailLogs(logs: string[]): string {
     if (logs.length === 0) return 'FFmpeg nevratil zadny log.'
     return `Posledni ffmpeg logy: ${logs.slice(-6).join(' | ')}`
+  }
+
+  private async _cleanupTempFiles(): Promise<void> {
+    await this._safeDelete('concat_list.txt')
+    await this._safeDelete('concat_out.mp4')
+    await this._safeDelete('mixed_out.mp4')
+    await this._safeDelete('music.mp3')
+    await this._safeDelete('music.wav')
+    await this._safeDelete('music.m4a')
+    await this._safeDelete('music.aac')
+
+    // Best-effort cleanup for known temp naming pattern.
+    for (let i = 0; i < 30; i++) {
+      await this._safeDelete(`norm_${i}.mp4`)
+      await this._safeDelete(`clip_${i}.mp4`)
+      await this._safeDelete(`clip_${i}.mov`)
+      await this._safeDelete(`clip_${i}.webm`)
+      await this._safeDelete(`clip_${i}.mkv`)
+    }
   }
 }

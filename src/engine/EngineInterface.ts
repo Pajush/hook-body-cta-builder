@@ -29,5 +29,6 @@ export interface IEngine {
     normalizeOptions: NormalizeOptions
     mixAudioOptions: MixAudioOptions
     onProgress?: ProgressCallback
+    onStage?: (message: string) => void
   }): Promise<Uint8Array>
 }
