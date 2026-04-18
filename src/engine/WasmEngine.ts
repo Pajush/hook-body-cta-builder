@@ -8,6 +8,8 @@ export class WasmEngine implements IEngine {
   private ffmpeg: FFmpeg
   private loaded = false
   private textEncoder = new TextEncoder()
+  private normalizedVideoCache = new Map<string, string>()
+  private normalizedAudioCache = new Map<string, string>()
 
   constructor() {
     this.ffmpeg = new FFmpeg()
@@ -55,6 +57,53 @@ export class WasmEngine implements IEngine {
     return parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3])
   }
 
+  private _getVideoCacheKey(clip: File, normalizeOptions: NormalizeOptions): string {
+    return [
+      clip.name,
+      clip.size,
+      clip.lastModified,
+      normalizeOptions.width,
+      normalizeOptions.height,
+      normalizeOptions.fps,
+    ].join('|')
+  }
+
+  private _getAudioCacheKey(clip: File): string {
+    return [clip.name, clip.size, clip.lastModified].join('|')
+  }
+
+  private _createCacheFileName(prefix: string, ext: string): string {
+    const id = Math.random().toString(36).slice(2, 8)
+    return `${prefix}_${Date.now()}_${id}.${ext}`
+  }
+
+  private _getOrCreateCachedVideoName(key: string): string {
+    let name = this.normalizedVideoCache.get(key)
+    if (!name) {
+      name = this._createCacheFileName('norm_cache', 'mp4')
+      this.normalizedVideoCache.set(key, name)
+    }
+    return name
+  }
+
+  private _getOrCreateCachedAudioName(key: string): string {
+    let name = this.normalizedAudioCache.get(key)
+    if (!name) {
+      name = this._createCacheFileName('aud_cache', 'm4a')
+      this.normalizedAudioCache.set(key, name)
+    }
+    return name
+  }
+
+  private async _fileExists(path: string): Promise<boolean> {
+    try {
+      await this.ffmpeg.readFile(path)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async buildCombination({
     clips,
     music,
@@ -91,49 +140,66 @@ export class WasmEngine implements IEngine {
       const normalizedNames: string[] = []
       const normalizedAudioNames: string[] = []
       for (let i = 0; i < clips.length; i++) {
-        onStage?.(`Normalizuji klip ${i + 1}/${clips.length}`)
+        onStage?.(`Pripravuji klip ${i + 1}/${clips.length}`)
         const clip = clips[i]
         const ext = clip.name.split('.').pop() ?? 'mp4'
         const inputName = `clip_${i}.${ext}`
-        const outputName = `norm_${i}.mp4`
-        await this.ffmpeg.writeFile(inputName, await fetchFile(clip))
+        const outputName = this._getOrCreateCachedVideoName(this._getVideoCacheKey(clip, normalizeOptions))
         const { width, height, fps } = normalizeOptions
 
-        const normalizeArgs = [
-          '-y',
-          '-i', inputName,
-          '-map', '0:v:0',
-          '-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,fps=${fps}`,
-          '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
-          '-an',
-          '-pix_fmt', 'yuv420p',
-          '-movflags', '+faststart',
-          outputName,
-        ]
-
-        await this.ffmpeg.exec(normalizeArgs)
+        if (!(await this._fileExists(outputName))) {
+          onStage?.(`Normalizuji video ${i + 1}/${clips.length}`)
+          await this.ffmpeg.writeFile(inputName, await fetchFile(clip))
+          const normalizeArgs = [
+            '-y',
+            '-i', inputName,
+            '-map', '0:v:0',
+            '-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,fps=${fps}`,
+            '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+            '-an',
+            '-pix_fmt', 'yuv420p',
+            '-movflags', '+faststart',
+            outputName,
+          ]
+          await this.ffmpeg.exec(normalizeArgs)
+          await this._safeDelete(inputName)
+        } else {
+          onStage?.(`Pouzivam cache videa ${i + 1}/${clips.length}`)
+        }
 
         // Preserve original audio as a separate normalized stream to avoid hangs in combined AV transcode.
         if (!mixAudioOptions.replaceOriginalAudio) {
-          const audioOutputName = `aud_${i}.m4a`
-          try {
-            await this.ffmpeg.exec([
-              '-y',
-              '-i', inputName,
-              '-vn',
-              '-map', '0:a:0',
-              '-c:a', 'aac',
-              '-ar', '48000',
-              '-ac', '2',
-              audioOutputName,
-            ])
+          const audioOutputName = this._getOrCreateCachedAudioName(this._getAudioCacheKey(clip))
+          if (!(await this._fileExists(audioOutputName))) {
+            onStage?.(`Normalizuji puvodni audio ${i + 1}/${clips.length}`)
+            if (!(await this._fileExists(inputName))) {
+              await this.ffmpeg.writeFile(inputName, await fetchFile(clip))
+            }
+            try {
+              await this.ffmpeg.exec([
+                '-y',
+                '-i', inputName,
+                '-vn',
+                '-map', '0:a:0',
+                '-c:a', 'aac',
+                '-ar', '48000',
+                '-ac', '2',
+                audioOutputName,
+              ])
+            } catch {
+              // Clip may not contain an audio track; continue without this audio segment.
+              await this._safeDelete(audioOutputName)
+            }
+            await this._safeDelete(inputName)
+          } else {
+            onStage?.(`Pouzivam cache puvodniho audia ${i + 1}/${clips.length}`)
+          }
+
+          if (await this._fileExists(audioOutputName)) {
             normalizedAudioNames.push(audioOutputName)
-          } catch {
-            // Clip may not contain an audio track; continue without this audio segment.
           }
         }
 
-        await this._safeDelete(inputName)
         normalizedNames.push(outputName)
         advance()
       }
@@ -150,7 +216,6 @@ export class WasmEngine implements IEngine {
         '-c', 'copy',
         concatOutput,
       ])
-      for (const n of normalizedNames) await this._safeDelete(n)
       await this._safeDelete('concat_list.txt')
       advance()
 
@@ -171,7 +236,6 @@ export class WasmEngine implements IEngine {
           preservedAudioOutput,
         ])
 
-        for (const n of normalizedAudioNames) await this._safeDelete(n)
         await this._safeDelete('concat_audio_list.txt')
       }
 
@@ -308,7 +372,7 @@ export class WasmEngine implements IEngine {
     await this._safeDelete('music.m4a')
     await this._safeDelete('music.aac')
 
-    // Best-effort cleanup for known temp naming pattern.
+    // Best-effort cleanup for known transient naming pattern.
     for (let i = 0; i < 30; i++) {
       await this._safeDelete(`norm_${i}.mp4`)
       await this._safeDelete(`aud_${i}.m4a`)
