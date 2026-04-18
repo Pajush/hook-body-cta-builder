@@ -154,7 +154,8 @@ export class WasmEngine implements IEngine {
             '-y',
             '-i', inputName,
             '-map', '0:v:0',
-            '-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,fps=${fps}`,
+            // Fill target frame and crop from center instead of letterboxing.
+            '-vf', `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},fps=${fps},setsar=1`,
             '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
             '-an',
             '-pix_fmt', 'yuv420p',
