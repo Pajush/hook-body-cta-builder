@@ -37,6 +37,9 @@ export class WasmEngine implements IEngine {
       console.log('[WasmEngine] Trying:', baseUrl)
       
       const fetchWithTimeout = (url: string, type: string) => {
+        if (timeoutMs <= 0) {
+          return toBlobURL(url, type)
+        }
         return Promise.race([
           toBlobURL(url, type),
           new Promise<never>((_, reject) =>
@@ -77,7 +80,7 @@ export class WasmEngine implements IEngine {
       const localUrl = canUseMultithread ? LOCAL_URLS.multithread : LOCAL_URLS.singlethread
       console.log('[WasmEngine] Attempting to load from local bundle:', localUrl)
       
-      if (await this._tryLoadFromUrl(localUrl, canUseMultithread, 15000)) {
+      if (await this._tryLoadFromUrl(localUrl, canUseMultithread, 0)) {
         this.loaded = true
         return
       }
