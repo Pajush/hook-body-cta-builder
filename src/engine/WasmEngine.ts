@@ -388,34 +388,46 @@ export class WasmEngine implements IEngine {
         }
         const musicFilter = musicFilterParts.join(',')
 
+        // Trim music to video duration first to avoid -stream_loop + -shortest issues
+        const trimmedMusicName = 'music_trimmed.m4a'
+        await this.ffmpeg.exec([
+          '-y',
+          '-i', musicName,
+          '-t', duration.toString(),
+          '-c:a', 'aac',
+          '-ar', '48000',
+          '-ac', '2',
+          trimmedMusicName,
+        ])
+
         if (!mixAudioOptions.replaceOriginalAudio && hasOriginalAudio && preservedAudioOutput) {
           await this.ffmpeg.exec([
             '-y',
             '-i', concatOutput,
             '-i', preservedAudioOutput,
-            '-stream_loop', '-1', '-i', musicName,
+            '-i', trimmedMusicName,
             '-filter_complex', `[2:a]${musicFilter}[bg];[1:a][bg]amix=inputs=2:duration=first:dropout_transition=2[aout]`,
             '-map', '0:v:0',
             '-map', '[aout]',
             '-c:v', 'copy',
             '-c:a', 'aac',
-            '-shortest',
             mixedOutput,
           ])
         } else {
           await this.ffmpeg.exec([
             '-y',
             '-i', concatOutput,
-            '-stream_loop', '-1', '-i', musicName,
+            '-i', trimmedMusicName,
             '-map', '0:v:0',
             '-map', '1:a:0',
             '-vcodec', 'copy',
             '-acodec', 'aac',
             '-af', musicFilter,
-            '-shortest',
             mixedOutput,
           ])
         }
+
+        await this._safeDelete(trimmedMusicName)
 
         await this._safeDelete(concatOutput)
         if (preservedAudioOutput) await this._safeDelete(preservedAudioOutput)
@@ -484,6 +496,7 @@ export class WasmEngine implements IEngine {
     await this._safeDelete('music.wav')
     await this._safeDelete('music.m4a')
     await this._safeDelete('music.aac')
+    await this._safeDelete('music_trimmed.m4a')
 
     // Best-effort cleanup for known transient naming pattern.
     for (let i = 0; i < 30; i++) {
